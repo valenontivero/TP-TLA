@@ -11,6 +11,7 @@
 /log/
 /node_modules/
 /obj/
+.idea/
 
 # Files.
 .DS_Store
