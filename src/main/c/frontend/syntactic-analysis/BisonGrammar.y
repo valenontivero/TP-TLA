@@ -50,6 +50,10 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %destructor { destroyExpression($$); } <expression>
 %destructor { destroyFactor($$); } <factor>
 
+/** String destructors for tokens that allocate memory */
+/** Preguntar si estaría bien esto... */
+/** %destructor { if ($$) free($$); } <string> */
+
 /** Terminals. */
 
 /* Keywords */

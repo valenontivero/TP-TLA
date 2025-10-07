@@ -102,6 +102,27 @@ To trigger an automatic integration on every push or PR (_Pull Request_), you mu
 * [Yash](https://marketplace.visualstudio.com/items?itemName=daohong-emilio.yash)
 
 
+---
+
+# Drum Machine DSL - Estado Actual
+
+## ✓ Análisis Léxico: Completo
+
+El analizador léxico ha sido implementado y testeado completamente. Reconoce los 24 tipos de tokens para el lenguaje de la máquina de ritmo.
+
+**Prueba Rápida:**
+```bash
+./test-lexer.sh
+```
+
+**Documentación:**
+- **LEXER.md** - Resumen completo y guía de pruebas
+- **NextSteps.md** - Requisitos del proyecto y próximos pasos
+
+**Siguiente Fase:** Análisis Sintáctico (Parser) - Ver NextSteps.md
+
+---
+
 # TP-TLA
 
 ### Ejemplo a priori del lenguaje  

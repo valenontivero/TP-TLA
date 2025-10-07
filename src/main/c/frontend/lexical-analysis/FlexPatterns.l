@@ -73,15 +73,15 @@ whitespace			[[:space:]]+
 "instruments"						{ return KeywordLexemeAction(INSTRUMENTS); }
 "active"							{ return KeywordLexemeAction(ACTIVE); }
 
+"x"									{ return HitLexemeAction(); }
+"."									{ return SilenceLexemeAction(); }
+"-"									{ return MelodicSilenceLexemeAction(); }
+
 {note_letter}{accidental}?{digit}	{ return NoteLexemeAction(); }
 
 {letter}({letter}|{digit}|"_")*		{ return IdentifierLexemeAction(); }
 
 {digit}+							{ return IntegerLexemeAction(); }
-
-"x"									{ return HitLexemeAction(); }
-"."									{ return SilenceLexemeAction(); }
-"-"									{ return MelodicSilenceLexemeAction(); }
 
 "+"									{ return OperatorLexemeAction(ADD); }
 "*"									{ return OperatorLexemeAction(MUL); }
