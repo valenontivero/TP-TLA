@@ -1,0 +1,14 @@
+tempo 140
+compasses 8
+steps 4
+
+pattern beat {
+    rhythm [x,.,.,x] * 2
+}
+
+instruments {
+    snare {
+        pattern beat
+        active 1-8
+    }
+}

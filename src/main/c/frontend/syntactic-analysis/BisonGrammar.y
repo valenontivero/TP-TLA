@@ -32,10 +32,17 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 
 	/** Non-terminals. */
 
-	Constant * constant;
-	Expression * expression;
-	Factor * factor;
 	Program * program;
+	Declarations * declarations;
+	PatternList * patternList;
+	Pattern * pattern;
+	RhythmExpression * rhythmExpression;
+	RhythmArray * rhythmArray;
+	RhythmElementList * rhythmElementList;
+	RhythmElement * rhythmElement;
+	InstrumentList * instrumentList;
+	Instrument * instrument;
+	ActiveRange * activeRange;
 }
 
 /**
@@ -46,13 +53,19 @@ void yyerror(const YYLTYPE * location, const char * message) {}
  *
  * @see https://www.gnu.org/software/bison/manual/html_node/Destructor-Decl.html
  */
-%destructor { destroyConstant($$); } <constant>
-%destructor { destroyExpression($$); } <expression>
-%destructor { destroyFactor($$); } <factor>
+%destructor { destroyDeclarations($$); } <declarations>
+%destructor { destroyPatternList($$); } <patternList>
+%destructor { destroyPattern($$); } <pattern>
+%destructor { destroyRhythmExpression($$); } <rhythmExpression>
+%destructor { destroyRhythmArray($$); } <rhythmArray>
+%destructor { destroyRhythmElementList($$); } <rhythmElementList>
+%destructor { destroyRhythmElement($$); } <rhythmElement>
+%destructor { destroyInstrumentList($$); } <instrumentList>
+%destructor { destroyInstrument($$); } <instrument>
+%destructor { destroyActiveRange($$); } <activeRange>
 
 /** String destructors for tokens that allocate memory */
-/** Preguntar si estaría bien esto... */
-/** %destructor { if ($$) free($$); } <string> */
+%destructor { if ($$) free($$); } <string>
 
 /** Terminals. */
 
@@ -93,10 +106,19 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %token <token> UNKNOWN
 
 /** Non-terminals. */
-%type <constant> constant
-%type <expression> expression
-%type <factor> factor
 %type <program> program
+%type <declarations> declarations
+%type <patternList> pattern_list
+%type <patternList> pattern_list_opt
+%type <pattern> pattern_def
+%type <rhythmExpression> rhythm_expr
+%type <rhythmArray> rhythm_array
+%type <rhythmElementList> rhythm_element_list
+%type <rhythmElement> rhythm_element
+%type <instrumentList> instrument_list
+%type <instrumentList> instrument_list_opt
+%type <instrument> instrument_def
+%type <activeRange> active_range
 
 /**
  * Precedence and associativity.
@@ -109,28 +131,67 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 
 %%
 
-// IMPORTANT: To use λ in the following grammar, use the %empty symbol.
-// NOTE: This is a temporary placeholder grammar for lexical analysis testing.
-//       The full syntactic grammar will be implemented in the next phase.
+/**
+ * Drum Machine DSL Grammar
+ *
+ * program: declarations + patterns + instruments
+ * declarations: tempo, compasses, steps
+ * patterns: pattern definitions with rhythm expressions
+ * instruments: instrument definitions with pattern references and active ranges
+ */
 
-program: INTEGER											{ $$ = ExpressionProgramSemanticAction(NULL); }
-	| TEMPO												{ $$ = ExpressionProgramSemanticAction(NULL); }
-	| ID												{ $$ = ExpressionProgramSemanticAction(NULL); }
-	| NOTE												{ $$ = ExpressionProgramSemanticAction(NULL); }
-	| HIT												{ $$ = ExpressionProgramSemanticAction(NULL); }
-	| SILENCE											{ $$ = ExpressionProgramSemanticAction(NULL); }
-	| MELODIC_SILENCE									{ $$ = ExpressionProgramSemanticAction(NULL); }
+program: declarations pattern_list_opt INSTRUMENTS OPEN_BRACE instrument_list_opt CLOSE_BRACE
+														{ $$ = ProgramSemanticAction($1, $2, $5); }
 	;
 
-expression: expression[left] ADD expression[right]			{ $$ = ArithmeticExpressionSemanticAction($left, $right, ADDITION); }
-	| expression[left] MUL expression[right]				{ $$ = ArithmeticExpressionSemanticAction($left, $right, MULTIPLICATION); }
-	| factor												{ $$ = FactorExpressionSemanticAction($1); }
+declarations: TEMPO INTEGER COMPASSES INTEGER STEPS INTEGER
+														{ $$ = DeclarationsSemanticAction($2, $4, $6); }
 	;
 
-factor: constant											{ $$ = ConstantFactorSemanticAction($1); }
+pattern_list_opt: pattern_list							{ $$ = $1; }
+	| %empty											{ $$ = NULL; }
 	;
 
-constant: INTEGER											{ $$ = IntegerConstantSemanticAction($1); }
+pattern_list: pattern_def								{ $$ = PatternListSemanticAction($1, NULL); }
+	| pattern_list pattern_def							{ $$ = PatternListSemanticAction($2, $1); }
+	;
+
+pattern_def: PATTERN ID OPEN_BRACE RHYTHM rhythm_expr CLOSE_BRACE
+														{ $$ = PatternSemanticAction($2, $5); }
+	;
+
+rhythm_expr: rhythm_array								{ $$ = RhythmArrayExpressionSemanticAction($1); }
+	| rhythm_expr[left] ADD rhythm_expr[right]			{ $$ = RhythmConcatenationSemanticAction($left, $right); }
+	| rhythm_array MUL INTEGER							{ $$ = RhythmRepetitionSemanticAction($1, $3); }
+	;
+
+rhythm_array: OPEN_BRACKET rhythm_element_list CLOSE_BRACKET
+														{ $$ = RhythmArraySemanticAction($2); }
+	;
+
+rhythm_element_list: rhythm_element						{ $$ = RhythmElementListSemanticAction($1, NULL); }
+	| rhythm_element_list COMMA rhythm_element			{ $$ = RhythmElementListSemanticAction($3, $1); }
+	;
+
+rhythm_element: HIT										{ $$ = HitElementSemanticAction(); }
+	| SILENCE											{ $$ = SilenceElementSemanticAction(); }
+	| NOTE												{ $$ = NoteElementSemanticAction($1); }
+	| MELODIC_SILENCE									{ $$ = MelodicSilenceElementSemanticAction(); }
+	;
+
+instrument_list_opt: instrument_list					{ $$ = $1; }
+	| %empty											{ $$ = NULL; }
+	;
+
+instrument_list: instrument_def							{ $$ = InstrumentListSemanticAction($1, NULL); }
+	| instrument_list instrument_def					{ $$ = InstrumentListSemanticAction($2, $1); }
+	;
+
+instrument_def: ID OPEN_BRACE PATTERN ID active_range CLOSE_BRACE
+														{ $$ = InstrumentSemanticAction($1, $4, $5); }
+	;
+
+active_range: ACTIVE INTEGER MELODIC_SILENCE INTEGER	{ $$ = ActiveRangeSemanticAction($2, $4); }
 	;
 
 %%
