@@ -26,3 +26,6 @@ BisonParser.c
 BisonParser.h
 FlexScanner.c
 FlexScanner.h
+
+# Logs
+*.log
