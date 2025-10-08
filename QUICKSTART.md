@@ -66,7 +66,8 @@ instruments {
 }
 EOF
 ```
-
+# ⚠️ TODO: 
+Mirándolo de vuelta, me parece que el instrumentro podría quedar declarado dentro de la declaración de pattern{}, y luego llamarlo con active dentro en instruments{}
 ### 2. Compilar
 
 ```bash
@@ -144,7 +145,8 @@ instruments ::=
         }]*
     }
 ```
-
+# ⚠️ TODO:
+Creo que en la devolucion nos quería decir que tenemos que tener algo del tipo import. Habrá que implementarlo (para traer patterns me imagino)
 ---
 
 ## ⚡ Tests Rápidos
@@ -275,36 +277,5 @@ instruments {
     }
 }
 ```
-
----
-
-## 📊 Estado del Proyecto
-
-| Fase | Estado | Tests |
-|------|--------|-------|
-| Análisis Léxico | ✅ Completo | 100% |
-| Análisis Sintáctico | ✅ Completo | 100% |
-| AST | ✅ Completo | 100% |
-| Backend/Generación | 🔜 Por hacer | - |
-
----
-
-## 🎓 Resumen para el TP
-
-**Frontend del compilador: COMPLETO ✅**
-
-- ✅ Lexer: 24 tipos de tokens
-- ✅ Parser: Gramática libre de contexto (tipo 2, Chomsky)
-- ✅ AST: Árbol completo con todas las construcciones
-- ✅ Acciones semánticas: Construcción del AST
-- ✅ Memory management: Sin leaks
-- ✅ Tests: 13 tests, todos pasan
-- ✅ Documentación: Completa
-
-**Para demostrar:**
-1. Ejecuta `./test-complete.sh`
-2. Muestra los 13 tests pasando
-3. Ejecuta un programa de ejemplo
-4. Muestra el AST construido
 
 **Siguiente fase:** Backend - Generación de audio/MIDI
