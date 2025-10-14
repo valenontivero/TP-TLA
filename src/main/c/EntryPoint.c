@@ -1,6 +1,7 @@
 #include "backend/code-generation/Generator.h"
 #include "backend/domain-specific/Calculator.h"
 #include "frontend/Frontend.h"
+#include "frontend/ImportResolver.h"
 #include "frontend/lexical-analysis/FlexActions.h"
 #include "frontend/syntactic-analysis/BisonActions.h"
 #include "support/logging/Logger.h"
@@ -28,6 +29,7 @@ const int main(const int length, const char ** arguments) {
 		initializeFlexActionsModule(lexicalAnalyzer),
 		initializeBisonActionsModule(&compilerState),
 		initializeFrontendModule(lexicalAnalyzer),
+		initializeImportResolverModule(),
 		initializeCalculatorModule(),
 		initializeGeneratorModule()
 	};
@@ -35,11 +37,18 @@ const int main(const int length, const char ** arguments) {
 	Program * program = compilerState.abstractSyntaxtTree;
 	if (compilationStatus == SUCCEEDED) {
 		// ----------------------------------------------------------------------------------------
-		// Beginning of the Backend... ------------------------------------------------------------
-		logDebugging(logger, "Generating output...");
-		executeGenerator(&compilerState);
-		// ...end of the Backend. -----------------------------------------------------------------
+		// Import Resolution Phase ----------------------------------------------------------------
+		logDebugging(logger, "Resolving imports...");
+		compilationStatus = resolveImports(program);
 		// ----------------------------------------------------------------------------------------
+		if (compilationStatus == SUCCEEDED) {
+			// ------------------------------------------------------------------------------------
+			// Beginning of the Backend... --------------------------------------------------------
+			logDebugging(logger, "Generating output...");
+			executeGenerator(&compilerState);
+			// ...end of the Backend. -------------------------------------------------------------
+			// ------------------------------------------------------------------------------------
+		}
 	}
 	else {
 		logError(logger, "The syntactic-analysis phase rejects the input program.");

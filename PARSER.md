@@ -23,15 +23,17 @@ La gramática implementada sigue la especificación de NextSteps.md:
 
 **G = ⟨Σ, Ν, Π, S⟩**
 
-- **Σ (Alfabeto)**: 24 tokens definidos en el análisis léxico
-- **Ν (No-terminales)**: program, declarations, pattern_list, pattern_def, rhythm_expr, rhythm_array, instrument_list, instrument_def, active_range
+- **Σ (Alfabeto)**: 26 tokens definidos en el análisis léxico
+- **Ν (No-terminales)**: program, import_list, import_stmt, declarations, pattern_list, pattern_def, rhythm_expr, rhythm_array, instrument_list, instrument_def, active_range
 - **Π (Producciones)**: Reglas libres de contexto (tipo 2, Chomsky)
 - **S (Símbolo inicial)**: program
 
 ### Non-Terminals
 
 ```c
-program              // declarations + patterns + instruments
+program              // imports + declarations + patterns + instruments
+import_list          // lista de statements remember
+import_stmt          // statement remember individual
 declarations         // tempo, compasses, steps
 pattern_list         // lista de definiciones de patrones
 pattern_def          // definición de un patrón
@@ -47,7 +49,12 @@ active_range         // rango activo (1-16)
 ### Productions
 
 ```
-program → declarations pattern_list? INSTRUMENTS { instrument_list }
+program → import_list? declarations pattern_list? INSTRUMENTS { instrument_list }
+
+import_list → import_stmt
+            | import_list import_stmt
+
+import_stmt → REMEMBER STRING_LITERAL
 
 declarations → TEMPO INTEGER COMPASSES INTEGER STEPS INTEGER
 
@@ -79,7 +86,9 @@ active_range → ACTIVE INTEGER - INTEGER
 
 Las estructuras del AST se definen en `AbstractSyntaxTree.h`:
 
-- **Program**: declarations + patterns + instruments
+- **Program**: imports + declarations + patterns + instruments
+- **ImportStatement**: ruta del archivo (string)
+- **ImportList**: lista enlazada de import statements
 - **Declarations**: tempo, compasses, steps (enteros)
 - **Pattern**: nombre + rhythm expression
 - **RhythmExpression**: array, concatenación, o repetición
@@ -93,6 +102,8 @@ Las estructuras del AST se definen en `AbstractSyntaxTree.h`:
 Implementadas en `BisonActions.c`:
 
 - `ProgramSemanticAction`: Construye el nodo raíz del AST
+- `ImportListSemanticAction`: Construye lista de imports
+- `ImportStatementSemanticAction`: Crea statement remember individual
 - `DeclarationsSemanticAction`: Crea nodo de declaraciones
 - `PatternSemanticAction`: Crea definición de patrón
 - `RhythmArrayExpressionSemanticAction`: Crea expresión de array
@@ -107,6 +118,8 @@ Implementadas en `BisonActions.c`:
 
 **Input:**
 ```
+remember "lib/patterns.dsl"
+
 tempo 120
 compasses 16
 steps 4

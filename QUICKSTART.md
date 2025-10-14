@@ -21,9 +21,9 @@ Si ves esto, **TODO está funcionando al 100%** ✨
 ## 📖 ¿Qué está implementado?
 
 ### ✅ Análisis Léxico (Lexer)
-- 24 tipos de tokens reconocidos
-- Keywords: `tempo`, `compasses`, `steps`, `pattern`, `rhythm`, `instruments`, `active`
-- Literales: números, notas musicales (E2, A#2, Bb3)
+- 26 tipos de tokens reconocidos
+- Keywords: `remember`, `tempo`, `compasses`, `steps`, `pattern`, `rhythm`, `instruments`, `active`
+- Literales: números, notas musicales (E2, A#2, Bb3), rutas de archivos ("lib/patterns.dsl")
 - Símbolos: `x` (hit), `.` (silence), `-` (melodic silence)
 - Operadores: `+` (concatenación), `*` (repetición)
 - Delimitadores: `{}`, `[]`, `,`
@@ -33,6 +33,7 @@ Si ves esto, **TODO está funcionando al 100%** ✨
 - AST (Abstract Syntax Tree) completo
 - Acciones semánticas funcionando
 - Gestión de memoria sin leaks
+- Soporte para `remember`: Permite referenciar archivos externos de patrones
 
 ---
 
@@ -42,6 +43,8 @@ Si ves esto, **TODO está funcionando al 100%** ✨
 
 ```bash
 cat > mi-programa.dsl << 'EOF'
+remember "lib/basic-patterns.dsl"
+
 tempo 120
 compasses 8
 steps 4
@@ -145,8 +148,29 @@ instruments ::=
         }]*
     }
 ```
-# ⚠️ TODO:
-Creo que en la devolucion nos quería decir que tenemos que tener algo del tipo import. Habrá que implementarlo (para traer patterns me imagino)
+
+### Sintaxis `remember` (opcional)
+
+```
+remember "path/to/file.dsl"
+```
+
+**Uso:**
+- Permite referenciar archivos externos con definiciones de patrones
+- Debe aparecer al inicio del programa, antes de las declaraciones
+- Actualmente reconocido y parseado (carga de archivos no implementada)
+
+**Ejemplo:**
+```
+remember "lib/kick-patterns.dsl"
+remember "lib/snare-patterns.dsl"
+
+tempo 120
+compasses 4
+steps 4
+...
+```
+
 ---
 
 ## ⚡ Tests Rápidos

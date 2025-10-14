@@ -10,13 +10,15 @@
 #include <stdlib.h>
 
 /** Initialize module's internal state. */
-ModuleDestructor initializeBisonActionsModule();
+ModuleDestructor initializeBisonActionsModule(CompilerState * compilerState);
 
 /**
  * Bison semantic actions for Drum Machine DSL.
  */
 
-Program * ProgramSemanticAction(Declarations * declarations, PatternList * patterns, InstrumentList * instruments);
+Program * ProgramSemanticAction(ImportList * imports, Declarations * declarations, PatternList * patterns, InstrumentList * instruments);
+ImportList * ImportListSemanticAction(ImportStatement * import, ImportList * next);
+ImportStatement * ImportStatementSemanticAction(char * filePath);
 Declarations * DeclarationsSemanticAction(int tempo, int compasses, int steps);
 PatternList * PatternListSemanticAction(Pattern * pattern, PatternList * next);
 Pattern * PatternSemanticAction(char * name, RhythmExpression * rhythm);

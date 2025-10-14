@@ -170,6 +170,24 @@ CompilationStatus SilenceLexemeAction() {
 	return status;
 }
 
+CompilationStatus StringLiteralLexemeAction() {
+	Token * token = createToken(_lexicalAnalyzer, STRING_LITERAL);
+	// Remove quotes from the string: "path" -> path
+	size_t len = strlen(token->lexeme);
+	if (len >= 2) {
+		char * str = malloc(len - 1);  // -2 for quotes, +1 for null terminator
+		strncpy(str, token->lexeme + 1, len - 2);
+		str[len - 2] = '\0';
+		token->semanticValue->string = str;
+	} else {
+		token->semanticValue->string = strdup("");
+	}
+	_logTokenAction(__FUNCTION__, token);
+	CompilationStatus status = pushToken(_lexicalAnalyzer, token);
+	destroyToken(token);
+	return status;
+}
+
 CompilationStatus UnknownLexemeAction() {
 	Token * token = createToken(_lexicalAnalyzer, UNKNOWN);
 	_logTokenAction(__FUNCTION__, token);

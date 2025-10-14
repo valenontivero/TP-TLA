@@ -36,14 +36,30 @@ static void _logSyntacticAnalyzerAction(const char * functionName) {
 
 /* PUBLIC FUNCTIONS */
 
-Program * ProgramSemanticAction(Declarations * declarations, PatternList * patterns, InstrumentList * instruments) {
+Program * ProgramSemanticAction(ImportList * imports, Declarations * declarations, PatternList * patterns, InstrumentList * instruments) {
 	_logSyntacticAnalyzerAction(__FUNCTION__);
 	Program * program = calloc(1, sizeof(Program));
+	program->imports = imports;
 	program->declarations = declarations;
 	program->patterns = patterns;
 	program->instruments = instruments;
 	_compilerState->abstractSyntaxtTree = program;
 	return program;
+}
+
+ImportList * ImportListSemanticAction(ImportStatement * import, ImportList * next) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	ImportList * list = calloc(1, sizeof(ImportList));
+	list->import = import;
+	list->next = next;
+	return list;
+}
+
+ImportStatement * ImportStatementSemanticAction(char * filePath) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	ImportStatement * stmt = calloc(1, sizeof(ImportStatement));
+	stmt->filePath = filePath;
+	return stmt;
 }
 
 Declarations * DeclarationsSemanticAction(int tempo, int compasses, int steps) {

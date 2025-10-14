@@ -24,10 +24,28 @@ ModuleDestructor initializeGeneratorModule() {
 
 static char * _indentation(const unsigned int indentationLevel);
 static void _generateProgram(Program * program);
+static void _generateImportList(ImportList * importList);
 static void _generateDeclarations(Declarations * declarations);
 static void _generatePatternList(PatternList * patternList);
 static void _generateInstrumentList(InstrumentList * instrumentList);
 static void _output(const unsigned int indentationLevel, const char * const format, ...);
+
+/**
+ * Generates the output of import list.
+ */
+static void _generateImportList(ImportList * importList) {
+	if (importList != NULL) {
+		_output(0, "Imports:\n");
+		ImportList * current = importList;
+		while (current != NULL) {
+			if (current->import != NULL) {
+				_output(1, "Import: \"%s\"\n", current->import->filePath);
+			}
+			current = current->next;
+		}
+		_output(0, "\n");
+	}
+}
 
 /**
  * Generates the output of declarations.
@@ -84,6 +102,7 @@ static void _generateInstrumentList(InstrumentList * instrumentList) {
 static void _generateProgram(Program * program) {
 	if (program != NULL) {
 		_output(0, "=== Drum Machine Program ===\n\n");
+		_generateImportList(program->imports);
 		_generateDeclarations(program->declarations);
 		_generatePatternList(program->patterns);
 		_generateInstrumentList(program->instruments);

@@ -23,10 +23,30 @@ ModuleDestructor initializeAbstractSyntaxTreeModule() {
 void destroyProgram(Program * program) {
 	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
 	if (program != NULL) {
+		destroyImportList(program->imports);
 		destroyDeclarations(program->declarations);
 		destroyPatternList(program->patterns);
 		destroyInstrumentList(program->instruments);
 		free(program);
+	}
+}
+
+void destroyImportList(ImportList * importList) {
+	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
+	if (importList != NULL) {
+		destroyImportStatement(importList->import);
+		destroyImportList(importList->next);
+		free(importList);
+	}
+}
+
+void destroyImportStatement(ImportStatement * importStatement) {
+	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
+	if (importStatement != NULL) {
+		if (importStatement->filePath != NULL) {
+			free(importStatement->filePath);
+		}
+		free(importStatement);
 	}
 }
 

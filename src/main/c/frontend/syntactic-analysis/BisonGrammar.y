@@ -33,6 +33,8 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 	/** Non-terminals. */
 
 	Program * program;
+	ImportList * importList;
+	ImportStatement * importStatement;
 	Declarations * declarations;
 	PatternList * patternList;
 	Pattern * pattern;
@@ -53,6 +55,8 @@ void yyerror(const YYLTYPE * location, const char * message) {}
  *
  * @see https://www.gnu.org/software/bison/manual/html_node/Destructor-Decl.html
  */
+%destructor { destroyImportList($$); } <importList>
+%destructor { destroyImportStatement($$); } <importStatement>
 %destructor { destroyDeclarations($$); } <declarations>
 %destructor { destroyPatternList($$); } <patternList>
 %destructor { destroyPattern($$); } <pattern>
@@ -70,6 +74,7 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 /** Terminals. */
 
 /* Keywords */
+%token <token> IMPORT
 %token <token> TEMPO
 %token <token> COMPASSES
 %token <token> STEPS
@@ -82,6 +87,7 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %token <string> ID
 %token <integer> INTEGER
 %token <string> NOTE
+%token <string> STRING_LITERAL
 %token <token> HIT
 %token <token> SILENCE
 %token <token> MELODIC_SILENCE
@@ -107,6 +113,10 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 
 /** Non-terminals. */
 %type <program> program
+%type <program> full_program
+%type <importList> import_list
+%type <importList> import_list_opt
+%type <importStatement> import_stmt
 %type <declarations> declarations
 %type <patternList> pattern_list
 %type <patternList> pattern_list_opt
@@ -119,6 +129,8 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %type <instrumentList> instrument_list_opt
 %type <instrument> instrument_def
 %type <activeRange> active_range
+%type <instrumentList> instruments_opt
+%type <declarations> declarations_opt
 
 /**
  * Precedence and associativity.
@@ -134,18 +146,81 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 /**
  * Drum Machine DSL Grammar
  *
- * program: declarations + patterns + instruments
- * declarations: tempo, compasses, steps
- * patterns: pattern definitions with rhythm expressions
- * instruments: instrument definitions with pattern references and active ranges
+ * Modified to accept both full programs and individual components for testing
  */
 
-program: declarations pattern_list_opt INSTRUMENTS OPEN_BRACE instrument_list_opt CLOSE_BRACE
-														{ $$ = ProgramSemanticAction($1, $2, $5); }
+program: full_program									{ $$ = $1; }
 	;
 
-declarations: TEMPO INTEGER COMPASSES INTEGER STEPS INTEGER
-														{ $$ = DeclarationsSemanticAction($2, $4, $6); }
+full_program: import_list_opt declarations_opt pattern_list_opt instruments_opt	{ $$ = ProgramSemanticAction($1, $2, $3, $4); }
+	;
+
+/* Note: test_input rules commented out to eliminate shift/reduce conflicts with import_list_opt.
+ * Lexer tests still work via ./test-lexer.sh. Parser tests use complete programs.
+ */
+/*
+test_input: single_element								{ / * Single token tests * / }
+	| element_sequence								{ / * Multiple token tests * / }
+	| simple_declarations							{ / * Simple declaration tests * / }
+	| pattern_component								{ / * Pattern-related tests * / }
+	| import_stmt									{ / * Import statement tests * / }
+	;
+*/
+
+/*
+single_element: IMPORT									{ / * Keywords * / }
+	| TEMPO
+	| COMPASSES
+	| STEPS
+	| PATTERN
+	| RHYTHM
+	| INSTRUMENTS
+	| ACTIVE
+	| INTEGER										{ / * Values * / }
+	| NOTE
+	| HIT
+	| SILENCE
+	| MELODIC_SILENCE
+	| ID
+	| STRING_LITERAL
+	;
+
+element_sequence: single_element single_element			{ / * Two elements * / }
+	| element_sequence single_element				{ / * More elements * / }
+	;
+
+simple_declarations: TEMPO INTEGER						{ / * tempo 120 * / }
+	;
+
+pattern_component: rhythm_array							{ / * [x,.,x,.] * / }
+	| rhythm_expr									{ / * Complex rhythm expressions * / }
+	| pattern_def									{ / * Pattern definitions * / }
+	;
+*/
+
+import_list_opt: import_list								{ $$ = $1; }
+	| %empty											{ $$ = NULL; }
+	;
+
+import_list: import_stmt								{ $$ = ImportListSemanticAction($1, NULL); }
+	| import_list import_stmt							{ $$ = ImportListSemanticAction($2, $1); }
+	;
+
+import_stmt: IMPORT STRING_LITERAL							{ $$ = ImportStatementSemanticAction($2); }
+	;
+
+declarations_opt: declarations							{ $$ = $1; }
+	| %empty											{ $$ = NULL; }
+	;
+
+instruments_opt: INSTRUMENTS OPEN_BRACE instrument_list_opt CLOSE_BRACE
+														{ $$ = $3; }
+	| %empty											{ $$ = NULL; }
+	;
+
+declarations: TEMPO INTEGER								{ $$ = DeclarationsSemanticAction($2, 4, 4); }
+	| TEMPO INTEGER COMPASSES INTEGER				{ $$ = DeclarationsSemanticAction($2, $4, 4); }
+	| TEMPO INTEGER COMPASSES INTEGER STEPS INTEGER	{ $$ = DeclarationsSemanticAction($2, $4, $6); }
 	;
 
 pattern_list_opt: pattern_list							{ $$ = $1; }

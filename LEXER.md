@@ -17,14 +17,15 @@ docker compose run --rm -e LOGGING_LEVEL=ALL compiler bash -c \
 
 ## Implementation Summary
 
-### 24 Token Types Implemented
+### 26 Token Types Implemented
 
-**Keywords (7):**
-`tempo`, `compasses`, `steps`, `pattern`, `rhythm`, `instruments`, `active`
+**Keywords (8):**
+`remember`, `tempo`, `compasses`, `steps`, `pattern`, `rhythm`, `instruments`, `active`
 
-**Literals (4):**
+**Literals (5):**
 - `INTEGER` - Numbers (120, 16, 4)
 - `NOTE` - Musical notes (E2, A#2, Bb3)
+- `STRING_LITERAL` - File paths ("lib/patterns.dsl")
 - `HIT` - Percussion hit: `x`
 - `SILENCE` - Percussion rest: `.`
 
@@ -46,6 +47,8 @@ docker compose run --rm -e LOGGING_LEVEL=ALL compiler bash -c \
 
 **Input:**
 ```
+remember "lib/patterns.dsl"
+
 tempo 120
 pattern kickPattern {
     rhythm [x,.,x,.] * 4
@@ -54,6 +57,8 @@ pattern kickPattern {
 
 **Tokens recognized:**
 ```
+REMEMBER       "remember"
+STRING_LITERAL "lib/patterns.dsl"
 TEMPO          "tempo"
 INTEGER        120
 PATTERN        "pattern"

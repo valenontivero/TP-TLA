@@ -16,6 +16,8 @@ typedef enum RhythmExpressionType RhythmExpressionType;
 typedef enum RhythmElementType RhythmElementType;
 
 typedef struct Program Program;
+typedef struct ImportList ImportList;
+typedef struct ImportStatement ImportStatement;
 typedef struct Declarations Declarations;
 typedef struct PatternList PatternList;
 typedef struct Pattern Pattern;
@@ -42,6 +44,18 @@ enum RhythmElementType {
 	ELEMENT_SILENCE,
 	ELEMENT_NOTE,
 	ELEMENT_MELODIC_SILENCE
+};
+
+/**
+ * Import statement: import "path/to/file.dsl"
+ */
+struct ImportStatement {
+	char * filePath;
+};
+
+struct ImportList {
+	ImportStatement * import;
+	ImportList * next;
 };
 
 /**
@@ -127,9 +141,10 @@ struct InstrumentList {
 };
 
 /**
- * Program: declarations + patterns + instruments
+ * Program: imports + declarations + patterns + instruments
  */
 struct Program {
+	ImportList * imports;
 	Declarations * declarations;
 	PatternList * patterns;
 	InstrumentList * instruments;
@@ -140,6 +155,8 @@ struct Program {
  */
 
 void destroyProgram(Program * program);
+void destroyImportList(ImportList * importList);
+void destroyImportStatement(ImportStatement * importStatement);
 void destroyDeclarations(Declarations * declarations);
 void destroyPatternList(PatternList * patternList);
 void destroyPattern(Pattern * pattern);
