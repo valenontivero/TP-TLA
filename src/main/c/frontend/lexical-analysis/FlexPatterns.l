@@ -27,6 +27,7 @@ extern CompilationStatus MelodicSilenceLexemeAction();
 extern CompilationStatus NoteLexemeAction();
 extern CompilationStatus OperatorLexemeAction(TokenLabel label);
 extern CompilationStatus SilenceLexemeAction();
+extern CompilationStatus StringLiteralLexemeAction();
 extern CompilationStatus UnknownLexemeAction();
 
 %}
@@ -65,6 +66,7 @@ whitespace			[[:space:]]+
 <MULTILINE_COMMENT>[^*]+			{ return IgnoredLexemeAction(); }
 <MULTILINE_COMMENT>.				{ return IgnoredLexemeAction(); }
 
+"remember"							{ return KeywordLexemeAction(IMPORT); }
 "tempo"								{ return KeywordLexemeAction(TEMPO); }
 "compasses"							{ return KeywordLexemeAction(COMPASSES); }
 "steps"								{ return KeywordLexemeAction(STEPS); }
@@ -75,7 +77,9 @@ whitespace			[[:space:]]+
 
 "x"									{ return HitLexemeAction(); }
 "."									{ return SilenceLexemeAction(); }
-"-"									{ return MelodicSilenceLexemeAction(); }
+/* TODO Delete this silence. '-' should only be acitive delimitator */
+
+\"([^\\\"]|\\.)*\"					{ return StringLiteralLexemeAction(); }
 
 {note_letter}{accidental}?{digit}	{ return NoteLexemeAction(); }
 

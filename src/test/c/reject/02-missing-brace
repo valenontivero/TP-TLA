@@ -1,0 +1,13 @@
+tempo 120
+compasses 4
+steps 4
+
+pattern kickPattern {
+    rhythm [x,.,x,.]
+
+instruments {
+    kick {
+        pattern kickPattern
+        active 1-4
+    }
+}

@@ -32,10 +32,19 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 
 	/** Non-terminals. */
 
-	Constant * constant;
-	Expression * expression;
-	Factor * factor;
 	Program * program;
+	ImportList * importList;
+	ImportStatement * importStatement;
+	Declarations * declarations;
+	PatternList * patternList;
+	Pattern * pattern;
+	RhythmExpression * rhythmExpression;
+	RhythmArray * rhythmArray;
+	RhythmElementList * rhythmElementList;
+	RhythmElement * rhythmElement;
+	InstrumentList * instrumentList;
+	Instrument * instrument;
+	ActiveRange * activeRange;
 }
 
 /**
@@ -46,17 +55,26 @@ void yyerror(const YYLTYPE * location, const char * message) {}
  *
  * @see https://www.gnu.org/software/bison/manual/html_node/Destructor-Decl.html
  */
-%destructor { destroyConstant($$); } <constant>
-%destructor { destroyExpression($$); } <expression>
-%destructor { destroyFactor($$); } <factor>
+%destructor { destroyImportList($$); } <importList>
+%destructor { destroyImportStatement($$); } <importStatement>
+%destructor { destroyDeclarations($$); } <declarations>
+%destructor { destroyPatternList($$); } <patternList>
+%destructor { destroyPattern($$); } <pattern>
+%destructor { destroyRhythmExpression($$); } <rhythmExpression>
+%destructor { destroyRhythmArray($$); } <rhythmArray>
+%destructor { destroyRhythmElementList($$); } <rhythmElementList>
+%destructor { destroyRhythmElement($$); } <rhythmElement>
+%destructor { destroyInstrumentList($$); } <instrumentList>
+%destructor { destroyInstrument($$); } <instrument>
+%destructor { destroyActiveRange($$); } <activeRange>
 
 /** String destructors for tokens that allocate memory */
-/** Preguntar si estaría bien esto... */
-/** %destructor { if ($$) free($$); } <string> */
+%destructor { if ($$) free($$); } <string>
 
 /** Terminals. */
 
 /* Keywords */
+%token <token> IMPORT
 %token <token> TEMPO
 %token <token> COMPASSES
 %token <token> STEPS
@@ -69,6 +87,7 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %token <string> ID
 %token <integer> INTEGER
 %token <string> NOTE
+%token <string> STRING_LITERAL
 %token <token> HIT
 %token <token> SILENCE
 %token <token> MELODIC_SILENCE
@@ -93,10 +112,25 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %token <token> UNKNOWN
 
 /** Non-terminals. */
-%type <constant> constant
-%type <expression> expression
-%type <factor> factor
 %type <program> program
+%type <program> full_program
+%type <importList> import_list
+%type <importList> import_list_opt
+%type <importStatement> import_stmt
+%type <declarations> declarations
+%type <patternList> pattern_list
+%type <patternList> pattern_list_opt
+%type <pattern> pattern_def
+%type <rhythmExpression> rhythm_expr
+%type <rhythmArray> rhythm_array
+%type <rhythmElementList> rhythm_element_list
+%type <rhythmElement> rhythm_element
+%type <instrumentList> instrument_list
+%type <instrumentList> instrument_list_opt
+%type <instrument> instrument_def
+%type <activeRange> active_range
+%type <instrumentList> instruments_opt
+%type <declarations> declarations_opt
 
 /**
  * Precedence and associativity.
@@ -109,28 +143,130 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 
 %%
 
-// IMPORTANT: To use λ in the following grammar, use the %empty symbol.
-// NOTE: This is a temporary placeholder grammar for lexical analysis testing.
-//       The full syntactic grammar will be implemented in the next phase.
+/**
+ * Drum Machine DSL Grammar
+ *
+ * Modified to accept both full programs and individual components for testing
+ */
 
-program: INTEGER											{ $$ = ExpressionProgramSemanticAction(NULL); }
-	| TEMPO												{ $$ = ExpressionProgramSemanticAction(NULL); }
-	| ID												{ $$ = ExpressionProgramSemanticAction(NULL); }
-	| NOTE												{ $$ = ExpressionProgramSemanticAction(NULL); }
-	| HIT												{ $$ = ExpressionProgramSemanticAction(NULL); }
-	| SILENCE											{ $$ = ExpressionProgramSemanticAction(NULL); }
-	| MELODIC_SILENCE									{ $$ = ExpressionProgramSemanticAction(NULL); }
+program: full_program									{ $$ = $1; }
 	;
 
-expression: expression[left] ADD expression[right]			{ $$ = ArithmeticExpressionSemanticAction($left, $right, ADDITION); }
-	| expression[left] MUL expression[right]				{ $$ = ArithmeticExpressionSemanticAction($left, $right, MULTIPLICATION); }
-	| factor												{ $$ = FactorExpressionSemanticAction($1); }
+full_program: import_list_opt declarations_opt pattern_list_opt instruments_opt	{ $$ = ProgramSemanticAction($1, $2, $3, $4); }
 	;
 
-factor: constant											{ $$ = ConstantFactorSemanticAction($1); }
+/* Note: test_input rules commented out to eliminate shift/reduce conflicts with import_list_opt.
+ * Lexer tests still work via ./test-lexer.sh. Parser tests use complete programs.
+ */
+/*
+test_input: single_element								{ / * Single token tests * / }
+	| element_sequence								{ / * Multiple token tests * / }
+	| simple_declarations							{ / * Simple declaration tests * / }
+	| pattern_component								{ / * Pattern-related tests * / }
+	| import_stmt									{ / * Import statement tests * / }
+	;
+*/
+
+/*
+single_element: IMPORT									{ / * Keywords * / }
+	| TEMPO
+	| COMPASSES
+	| STEPS
+	| PATTERN
+	| RHYTHM
+	| INSTRUMENTS
+	| ACTIVE
+	| INTEGER										{ / * Values * / }
+	| NOTE
+	| HIT
+	| SILENCE
+	| MELODIC_SILENCE
+	| ID
+	| STRING_LITERAL
 	;
 
-constant: INTEGER											{ $$ = IntegerConstantSemanticAction($1); }
+element_sequence: single_element single_element			{ / * Two elements * / }
+	| element_sequence single_element				{ / * More elements * / }
+	;
+
+simple_declarations: TEMPO INTEGER						{ / * tempo 120 * / }
+	;
+
+pattern_component: rhythm_array							{ / * [x,.,x,.] * / }
+	| rhythm_expr									{ / * Complex rhythm expressions * / }
+	| pattern_def									{ / * Pattern definitions * / }
+	;
+*/
+
+import_list_opt: import_list								{ $$ = $1; }
+	| %empty											{ $$ = NULL; }
+	;
+
+import_list: import_stmt								{ $$ = ImportListSemanticAction($1, NULL); }
+	| import_list import_stmt							{ $$ = ImportListSemanticAction($2, $1); }
+	;
+
+import_stmt: IMPORT STRING_LITERAL							{ $$ = ImportStatementSemanticAction($2); }
+	;
+
+declarations_opt: declarations							{ $$ = $1; }
+	| %empty											{ $$ = NULL; }
+	;
+
+instruments_opt: INSTRUMENTS OPEN_BRACE instrument_list_opt CLOSE_BRACE
+														{ $$ = $3; }
+	| %empty											{ $$ = NULL; }
+	;
+
+declarations: TEMPO INTEGER								{ $$ = DeclarationsSemanticAction($2, 4, 4); }
+	| TEMPO INTEGER COMPASSES INTEGER				{ $$ = DeclarationsSemanticAction($2, $4, 4); }
+	| TEMPO INTEGER COMPASSES INTEGER STEPS INTEGER	{ $$ = DeclarationsSemanticAction($2, $4, $6); }
+	;
+
+pattern_list_opt: pattern_list							{ $$ = $1; }
+	| %empty											{ $$ = NULL; }
+	;
+
+pattern_list: pattern_def								{ $$ = PatternListSemanticAction($1, NULL); }
+	| pattern_list pattern_def							{ $$ = PatternListSemanticAction($2, $1); }
+	;
+
+pattern_def: PATTERN ID OPEN_BRACE RHYTHM rhythm_expr CLOSE_BRACE
+														{ $$ = PatternSemanticAction($2, $5); }
+	;
+
+rhythm_expr: rhythm_array								{ $$ = RhythmArrayExpressionSemanticAction($1); }
+	| rhythm_expr[left] ADD rhythm_expr[right]			{ $$ = RhythmConcatenationSemanticAction($left, $right); }
+	| rhythm_array MUL INTEGER							{ $$ = RhythmRepetitionSemanticAction($1, $3); }
+	;
+
+rhythm_array: OPEN_BRACKET rhythm_element_list CLOSE_BRACKET
+														{ $$ = RhythmArraySemanticAction($2); }
+	;
+
+rhythm_element_list: rhythm_element						{ $$ = RhythmElementListSemanticAction($1, NULL); }
+	| rhythm_element_list COMMA rhythm_element			{ $$ = RhythmElementListSemanticAction($3, $1); }
+	;
+
+rhythm_element: HIT										{ $$ = HitElementSemanticAction(); }
+	| SILENCE											{ $$ = SilenceElementSemanticAction(); }
+	| NOTE												{ $$ = NoteElementSemanticAction($1); }
+	| MELODIC_SILENCE									{ $$ = MelodicSilenceElementSemanticAction(); }
+	;
+
+instrument_list_opt: instrument_list					{ $$ = $1; }
+	| %empty											{ $$ = NULL; }
+	;
+
+instrument_list: instrument_def							{ $$ = InstrumentListSemanticAction($1, NULL); }
+	| instrument_list instrument_def					{ $$ = InstrumentListSemanticAction($2, $1); }
+	;
+
+instrument_def: ID OPEN_BRACE PATTERN ID active_range CLOSE_BRACE
+														{ $$ = InstrumentSemanticAction($1, $4, $5); }
+	;
+
+active_range: ACTIVE INTEGER MELODIC_SILENCE INTEGER	{ $$ = ActiveRangeSemanticAction($2, $4); }
 	;
 
 %%

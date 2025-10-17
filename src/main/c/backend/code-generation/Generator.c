@@ -23,124 +23,91 @@ ModuleDestructor initializeGeneratorModule() {
 /** PRIVATE FUNCTIONS */
 
 static char * _indentation(const unsigned int indentationLevel);
-static const char _expressionTypeToCharacter(const ExpressionType type);
-static void _generateConstant(const unsigned int indentationLevel, Constant * constant);
-static void _generateEpilogue(const int value);
-static void _generateExpression(const unsigned int indentationLevel, Expression * expression);
-static void _generateFactor(const unsigned int indentationLevel, Factor * factor);
 static void _generateProgram(Program * program);
-static void _generatePrologue(void);
+static void _generateImportList(ImportList * importList);
+static void _generateDeclarations(Declarations * declarations);
+static void _generatePatternList(PatternList * patternList);
+static void _generateInstrumentList(InstrumentList * instrumentList);
 static void _output(const unsigned int indentationLevel, const char * const format, ...);
 
 /**
- * Converts and expression type to the proper character of the operation
- * involved, or returns '\0' if that's not possible.
+ * Generates the output of import list.
  */
-static const char _expressionTypeToCharacter(const ExpressionType type) {
-	switch (type) {
-		case ADDITION: return '+';
-		case DIVISION: return '/';
-		case MULTIPLICATION: return '*';
-		case SUBTRACTION: return '-';
-		default:
-			logError(_logger, "The specified expression type cannot be converted into character: %d", type);
-			return '\0';
+static void _generateImportList(ImportList * importList) {
+	if (importList != NULL) {
+		_output(0, "Imports:\n");
+		ImportList * current = importList;
+		while (current != NULL) {
+			if (current->import != NULL) {
+				_output(1, "Import: \"%s\"\n", current->import->filePath);
+			}
+			current = current->next;
+		}
+		_output(0, "\n");
 	}
 }
 
 /**
- * Generates the output of a constant.
+ * Generates the output of declarations.
  */
-static void _generateConstant(const unsigned int indentationLevel, Constant * constant) {
-	_output(indentationLevel, "%s", "[ $C$, circle, draw, black!20\n");
-	_output(1 + indentationLevel, "%s%d%s", "[ $", constant->value, "$, circle, draw ]\n");
-	_output(indentationLevel, "%s", "]\n");
-}
-
-/**
- * Creates the epilogue of the generated output, that is, the final lines that
- * completes a valid Latex document.
- */
-static void _generateEpilogue(const int value) {
-	_output(0, "%s%d%s",
-		"            [ $", value, "$, circle, draw, blue ]\n"
-		"        ]\n"
-		"    \\end{forest}\n"
-		"\\end{document}\n\n"
-	);
-}
-
-/**
- * Generates the output of an expression.
- */
-static void _generateExpression(const unsigned int indentationLevel, Expression * expression) {
-	_output(indentationLevel, "%s", "[ $E$, circle, draw, black!20\n");
-	switch (expression->type) {
-		case ADDITION:
-		case DIVISION:
-		case MULTIPLICATION:
-		case SUBTRACTION:
-			_generateExpression(1 + indentationLevel, expression->leftExpression);
-			_output(1 + indentationLevel, "%s%c%s", "[ $", _expressionTypeToCharacter(expression->type), "$, circle, draw, purple ]\n");
-			_generateExpression(1 + indentationLevel, expression->rightExpression);
-			break;
-		case FACTOR:
-			_generateFactor(1 + indentationLevel, expression->factor);
-			break;
-		default:
-			logError(_logger, "The specified expression type is unknown: %d", expression->type);
-			break;
+static void _generateDeclarations(Declarations * declarations) {
+	if (declarations != NULL) {
+		_output(0, "Tempo: %d BPM\n", declarations->tempo);
+		_output(0, "Compasses: %d\n", declarations->compasses);
+		_output(0, "Steps: %d\n", declarations->steps);
 	}
-	_output(indentationLevel, "%s", "]\n");
 }
 
 /**
- * Generates the output of a factor.
+ * Generates the output of pattern list.
  */
-static void _generateFactor(const unsigned int indentationLevel, Factor * factor) {
-	_output(indentationLevel, "%s", "[ $F$, circle, draw, black!20\n");
-	switch (factor->type) {
-		case CONSTANT:
-			_generateConstant(1 + indentationLevel, factor->constant);
-			break;
-		case EXPRESSION:
-			_output(1 + indentationLevel, "%s", "[ $($, circle, draw, purple ]\n");
-			_generateExpression(1 + indentationLevel, factor->expression);
-			_output(1 + indentationLevel, "%s", "[ $)$, circle, draw, purple ]\n");
-			break;
-		default:
-			logError(_logger, "The specified factor type is unknown: %d", factor->type);
-			break;
+static void _generatePatternList(PatternList * patternList) {
+	if (patternList != NULL) {
+		_output(0, "\nPatterns:\n");
+		PatternList * current = patternList;
+		while (current != NULL) {
+			if (current->pattern != NULL) {
+				_output(1, "Pattern: %s\n", current->pattern->name);
+			}
+			current = current->next;
+		}
 	}
-	_output(indentationLevel, "%s", "]\n");
+}
+
+/**
+ * Generates the output of instrument list.
+ */
+static void _generateInstrumentList(InstrumentList * instrumentList) {
+	if (instrumentList != NULL) {
+		_output(0, "\nInstruments:\n");
+		InstrumentList * current = instrumentList;
+		while (current != NULL) {
+			if (current->instrument != NULL) {
+				_output(1, "Instrument: %s\n", current->instrument->name);
+				_output(2, "Pattern: %s\n", current->instrument->patternName);
+				if (current->instrument->activeRange != NULL) {
+					_output(2, "Active: %d-%d\n",
+						current->instrument->activeRange->start,
+						current->instrument->activeRange->end);
+				}
+			}
+			current = current->next;
+		}
+	}
 }
 
 /**
  * Generates the output of the program.
  */
 static void _generateProgram(Program * program) {
-	_generateExpression(3, program->expression);
-}
-
-/**
- * Creates the prologue of the generated output, a Latex document that renders
- * a tree thanks to the Forest package.
- *
- * @see https://ctan.dcc.uchile.cl/graphics/pgf/contrib/forest/forest-doc.pdf
- */
-static void _generatePrologue(void) {
-	_output(0, "%s",
-		"\\documentclass{standalone}\n\n"
-		"\\usepackage[utf8]{inputenc}\n"
-		"\\usepackage[T1]{fontenc}\n"
-		"\\usepackage{amsmath}\n"
-		"\\usepackage{forest}\n"
-		"\\usepackage{microtype}\n\n"
-		"\\begin{document}\n"
-		"    \\centering\n"
-		"    \\begin{forest}\n"
-		"        [ \\text{$=$}, circle, draw, purple\n"
-	);
+	if (program != NULL) {
+		_output(0, "=== Drum Machine Program ===\n\n");
+		_generateImportList(program->imports);
+		_generateDeclarations(program->declarations);
+		_generatePatternList(program->patterns);
+		_generateInstrumentList(program->instruments);
+		_output(0, "\n=== End of Program ===\n");
+	}
 }
 
 /**
@@ -171,8 +138,6 @@ static void _output(const unsigned int indentationLevel, const char * const form
 
 void executeGenerator(CompilerState * compilerState) {
 	logDebugging(_logger, "Generating final output...");
-	_generatePrologue();
 	_generateProgram(compilerState->abstractSyntaxtTree);
-	_generateEpilogue(compilerState->value);
 	logDebugging(_logger, "Generation is done.");
 }

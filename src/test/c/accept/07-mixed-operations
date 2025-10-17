@@ -1,0 +1,14 @@
+tempo 120
+compasses 16
+steps 4
+
+pattern complex {
+    rhythm [x,.,x,.] * 2 + [x,x,x,x] + [.,.,x,.] * 2
+}
+
+instruments {
+    kick {
+        pattern complex
+        active 1-16
+    }
+}

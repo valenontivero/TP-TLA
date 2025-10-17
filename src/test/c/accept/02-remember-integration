@@ -1,0 +1,28 @@
+remember "src/test/c/accept/patterns-library.dsl"
+
+tempo 120
+compasses 8
+steps 4
+
+pattern myPattern {
+    rhythm [x,.,x,x]
+}
+
+instruments {
+    kick {
+        pattern basicKick
+        active 1-8
+    }
+    snare {
+        pattern basicSnare
+        active 1-8
+    }
+    hihat {
+        pattern basicHihat
+        active 1-8
+    }
+    custom {
+        pattern myPattern
+        active 5-8
+    }
+}

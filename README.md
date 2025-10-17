@@ -2,6 +2,27 @@
 
 [![✗](https://github.com/agustin-golmar/Flex-Bison-Compiler/actions/workflows/pipeline.yaml/badge.svg?branch=production)](https://github.com/agustin-golmar/Flex-Bison-Compiler/actions/workflows/pipeline.yaml)
 
+# Drum Machine DSL Compiler
+
+Compilador completo para un lenguaje específico de dominio (DSL) para creación de ritmos estilo máquina de ritmos.
+
+## 🚀 Quick Start - ¡Prueba que TODO funciona!
+
+```bash
+./test-complete.sh
+```
+
+**Resultado esperado:** `✓ ALL TESTS PASSED! (13/13 tests)`
+
+## 📖 Documentación
+
+- **[QUICKSTART.md](QUICKSTART.md)** - Guía rápida de uso
+- **[TESTING.md](TESTING.md)** - Guía completa de testing
+- **[PARSER.md](PARSER.md)** - Documentación del parser
+- **[LEXER.md](LEXER.md)** - Documentación del lexer
+
+---
+
 # Flex-Bison-Compiler
 
 A base compiler example, developed with Flex and Bison.
@@ -108,18 +129,39 @@ To trigger an automatic integration on every push or PR (_Pull Request_), you mu
 
 ## ✓ Análisis Léxico: Completo
 
-El analizador léxico ha sido implementado y testeado completamente. Reconoce los 24 tipos de tokens para el lenguaje de la máquina de ritmo.
+El analizador léxico reconoce los 24 tipos de tokens para el lenguaje de la máquina de ritmo.
 
 **Prueba Rápida:**
 ```bash
 ./test-lexer.sh
 ```
 
-**Documentación:**
-- **LEXER.md** - Resumen completo y guía de pruebas
-- **NextSteps.md** - Requisitos del proyecto y próximos pasos
+## ✓ Análisis Sintáctico: Completo
 
-**Siguiente Fase:** Análisis Sintáctico (Parser) - Ver NextSteps.md
+El parser (analizador sintáctico) construye el AST completo del lenguaje Drum Machine DSL.
+
+**Características implementadas:**
+- Declaraciones: tempo, compasses, steps
+- Patrones con expresiones rítmicas
+- Arrays de ritmo: `[x,.,x,.]`
+- Concatenación de ritmos: `+`
+- Repetición de ritmos: `* N`
+- Instrumentos con referencias a patrones
+- Rangos activos: `active 1-16`
+
+**Prueba Completa (RECOMENDADO):**
+```bash
+./test-complete.sh
+```
+Este script ejecuta 13 tests comprehensivos que verifican todo el compilador.
+
+**Documentación:**
+- **TESTING.md** - Guía completa de testing (¡LEE ESTO!)
+- **PARSER.md** - Documentación del parser
+- **LEXER.md** - Documentación del lexer
+- **NextSteps.md** - Requisitos del proyecto
+
+**Siguiente Fase:** Backend - Generación de audio
 
 ---
 

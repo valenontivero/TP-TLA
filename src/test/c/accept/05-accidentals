@@ -1,0 +1,14 @@
+tempo 120
+compasses 4
+steps 4
+
+pattern chromatic {
+    rhythm [C4,C#4,D4,D#4] + [Eb4,E4,F4,Gb4]
+}
+
+instruments {
+    synth {
+        pattern chromatic
+        active 1-4
+    }
+}

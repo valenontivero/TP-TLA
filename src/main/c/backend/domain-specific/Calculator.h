@@ -35,22 +35,7 @@ ComputationResult multiply(const int multiplicand, const int multiplier);
 ComputationResult subtract(const int minuend, const int subtract);
 
 /**
- * Computes the final value of a mathematical constant.
- */
-ComputationResult computeConstant(Constant * constant);
-
-/**
- * Computes the final value of a mathematical expression.
- */
-ComputationResult computeExpression(Expression * expression);
-
-/**
- * Computes the final value of a mathematical factor.
- */
-ComputationResult computeFactor(Factor * factor);
-
-/**
- * Computes the program value using the current compiler state.
+ * Executes the calculator (not implemented for Drum Machine DSL).
  */
 ComputationResult executeCalculator(CompilerState * compilerState);
 

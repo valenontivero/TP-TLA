@@ -10,17 +10,29 @@
 #include <stdlib.h>
 
 /** Initialize module's internal state. */
-ModuleDestructor initializeBisonActionsModule();
+ModuleDestructor initializeBisonActionsModule(CompilerState * compilerState);
 
 /**
- * Bison semantic actions.
+ * Bison semantic actions for Drum Machine DSL.
  */
 
-Constant * IntegerConstantSemanticAction(const int value);
-Expression * ArithmeticExpressionSemanticAction(Expression * leftExpression, Expression * rightExpression, ExpressionType type);
-Expression * FactorExpressionSemanticAction(Factor * factor);
-Factor * ConstantFactorSemanticAction(Constant * constant);
-Factor * ExpressionFactorSemanticAction(Expression * expression);
-Program * ExpressionProgramSemanticAction(Expression * expression);
+Program * ProgramSemanticAction(ImportList * imports, Declarations * declarations, PatternList * patterns, InstrumentList * instruments);
+ImportList * ImportListSemanticAction(ImportStatement * import, ImportList * next);
+ImportStatement * ImportStatementSemanticAction(char * filePath);
+Declarations * DeclarationsSemanticAction(int tempo, int compasses, int steps);
+PatternList * PatternListSemanticAction(Pattern * pattern, PatternList * next);
+Pattern * PatternSemanticAction(char * name, RhythmExpression * rhythm);
+RhythmExpression * RhythmArrayExpressionSemanticAction(RhythmArray * array);
+RhythmExpression * RhythmConcatenationSemanticAction(RhythmExpression * left, RhythmExpression * right);
+RhythmExpression * RhythmRepetitionSemanticAction(RhythmArray * array, int repetitions);
+RhythmArray * RhythmArraySemanticAction(RhythmElementList * elements);
+RhythmElementList * RhythmElementListSemanticAction(RhythmElement * element, RhythmElementList * next);
+RhythmElement * HitElementSemanticAction();
+RhythmElement * SilenceElementSemanticAction();
+RhythmElement * NoteElementSemanticAction(char * noteValue);
+RhythmElement * MelodicSilenceElementSemanticAction();
+InstrumentList * InstrumentListSemanticAction(Instrument * instrument, InstrumentList * next);
+Instrument * InstrumentSemanticAction(char * name, char * patternName, ActiveRange * activeRange);
+ActiveRange * ActiveRangeSemanticAction(int start, int end);
 
 #endif

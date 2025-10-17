@@ -1,0 +1,14 @@
+tempo 120
+compasses 8
+steps 4
+
+pattern melody {
+    rhythm [E2,G2] + [A2,C3]
+}
+
+instruments {
+    bass {
+        pattern melody
+        active 1-8
+    }
+}

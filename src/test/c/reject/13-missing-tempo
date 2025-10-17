@@ -1,0 +1,9 @@
+compasses 4
+steps 4
+
+instruments {
+    kick {
+        pattern kickPattern
+        active 1-4
+    }
+}
