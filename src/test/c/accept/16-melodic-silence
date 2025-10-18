@@ -3,7 +3,7 @@ compasses 4
 steps 4
 
 pattern bassline {
-    rhythm [E2,G2,-,A2]
+    rhythm [E2,G2,.,A2]
 }
 
 instruments {

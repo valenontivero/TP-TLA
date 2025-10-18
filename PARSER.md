@@ -245,9 +245,8 @@ Permite representar tres tipos de expresiones rítmicas sin desperdiciar memoria
 **2. Listas enlazadas para patterns e instruments:**
 Simplifica la construcción del AST en modo bottom-up (LALR parser).
 
-**3. Separación de MELODIC_SILENCE y SILENCE:**
-- `.` (SILENCE) - silencio de percusión
-- `-` (MELODIC_SILENCE) - silencio melódico Y separador en active ranges
+**3. Uso unificado de SILENCE:**
+- `.` (SILENCE) - silencio universal (percusión y melódico)
 
 ---
 

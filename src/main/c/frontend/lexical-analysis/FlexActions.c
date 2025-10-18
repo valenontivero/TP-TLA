@@ -137,13 +137,6 @@ CompilationStatus LeaveMultilineCommentLexemeAction() {
 	return IN_PROGRESS;
 }
 
-CompilationStatus MelodicSilenceLexemeAction() {
-	Token * token = createToken(_lexicalAnalyzer, MELODIC_SILENCE);
-	_logTokenAction(__FUNCTION__, token);
-	CompilationStatus status = pushToken(_lexicalAnalyzer, token);
-	destroyToken(token);
-	return status;
-}
 
 CompilationStatus NoteLexemeAction() {
 	Token * token = createToken(_lexicalAnalyzer, NOTE);

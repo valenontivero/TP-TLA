@@ -23,7 +23,6 @@ extern CompilationStatus IgnoredLexemeAction();
 extern CompilationStatus IntegerLexemeAction();
 extern CompilationStatus KeywordLexemeAction(TokenLabel label);
 extern CompilationStatus LeaveMultilineCommentLexemeAction();
-extern CompilationStatus MelodicSilenceLexemeAction();
 extern CompilationStatus NoteLexemeAction();
 extern CompilationStatus OperatorLexemeAction(TokenLabel label);
 extern CompilationStatus SilenceLexemeAction();
@@ -77,7 +76,6 @@ whitespace			[[:space:]]+
 
 "x"									{ return HitLexemeAction(); }
 "."									{ return SilenceLexemeAction(); }
-"-"									{ return MelodicSilenceLexemeAction(); }
 
 \"([^\\\"]|\\.)*\"					{ return StringLiteralLexemeAction(); }
 
@@ -95,6 +93,7 @@ whitespace			[[:space:]]+
 "["									{ return DelimiterLexemeAction(OPEN_BRACKET); }
 "]"									{ return DelimiterLexemeAction(CLOSE_BRACKET); }
 ","									{ return DelimiterLexemeAction(COMMA); }
+"-"									{ return DelimiterLexemeAction(RANGE_SEPARATOR); }
 
 {whitespace}						{ return IgnoredLexemeAction(); }
 .									{ return UnknownLexemeAction(); }

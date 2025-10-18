@@ -152,13 +152,6 @@ RhythmElement * NoteElementSemanticAction(char * noteValue) {
 	return element;
 }
 
-RhythmElement * MelodicSilenceElementSemanticAction() {
-	_logSyntacticAnalyzerAction(__FUNCTION__);
-	RhythmElement * element = calloc(1, sizeof(RhythmElement));
-	element->type = ELEMENT_MELODIC_SILENCE;
-	element->noteValue = NULL;
-	return element;
-}
 
 InstrumentList * InstrumentListSemanticAction(Instrument * instrument, InstrumentList * next) {
 	_logSyntacticAnalyzerAction(__FUNCTION__);

@@ -42,8 +42,7 @@ enum RhythmExpressionType {
 enum RhythmElementType {
 	ELEMENT_HIT,
 	ELEMENT_SILENCE,
-	ELEMENT_NOTE,
-	ELEMENT_MELODIC_SILENCE
+	ELEMENT_NOTE
 };
 
 /**

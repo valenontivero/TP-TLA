@@ -12,7 +12,7 @@ Frontend del compilador **100% funcional** con todos los tests pasando.
 
 **Archivo principal:** `src/main/c/frontend/lexical-analysis/FlexPatterns.l`
 
-**Tokens reconocidos:** 24 tipos
+**Tokens reconocidos:** 23 tipos
 
 #### Keywords (7)
 - `tempo`, `compasses`, `steps`
@@ -28,17 +28,16 @@ Frontend del compilador **100% funcional** con todos los tests pasando.
 - `x`: HIT (golpe)
 - `.`: SILENCE (silencio)
 
-#### Símbolos Melódicos (1)
-- `-`: MELODIC_SILENCE (silencio melódico)
 
 #### Operadores (2)
 - `+`: concatenación de ritmos
 - `*`: repetición de ritmos
 
-#### Delimitadores (5)
+#### Delimitadores (6)
 - `{`, `}`: bloques
 - `[`, `]`: arrays
 - `,`: separador
+- `-`: separador de rangos
 
 #### Comentarios (1)
 - `/* ... */`: comentarios multilínea
@@ -52,7 +51,7 @@ Frontend del compilador **100% funcional** con todos los tests pasando.
 **Gramática:** G = ⟨Σ, Ν, Π, S⟩
 
 #### Σ (Alfabeto)
-24 tokens del lexer
+23 tokens del lexer
 
 #### Ν (No-terminales)
 - `program`
@@ -81,7 +80,7 @@ rhythm_expr → rhythm_array
 
 rhythm_array → [ element, element, ... ]
 
-element → x | . | NOTE | -
+element → x | . | NOTE
 
 instruments → INSTRUMENTS { instrument* }
 

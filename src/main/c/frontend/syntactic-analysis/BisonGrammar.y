@@ -90,7 +90,6 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %token <string> STRING_LITERAL
 %token <token> HIT
 %token <token> SILENCE
-%token <token> MELODIC_SILENCE
 
 /* Operators */
 %token <token> ADD
@@ -102,6 +101,7 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %token <token> OPEN_BRACKET
 %token <token> CLOSE_BRACKET
 %token <token> COMMA
+%token <token> RANGE_SEPARATOR
 
 /* Comments (kept for backward compatibility) */
 %token <token> OPEN_COMMENT
@@ -251,7 +251,6 @@ rhythm_element_list: rhythm_element						{ $$ = RhythmElementListSemanticAction(
 rhythm_element: HIT										{ $$ = HitElementSemanticAction(); }
 	| SILENCE											{ $$ = SilenceElementSemanticAction(); }
 	| NOTE												{ $$ = NoteElementSemanticAction($1); }
-	| MELODIC_SILENCE									{ $$ = MelodicSilenceElementSemanticAction(); }
 	;
 
 instrument_list_opt: instrument_list					{ $$ = $1; }
@@ -266,7 +265,7 @@ instrument_def: ID OPEN_BRACE PATTERN ID active_range CLOSE_BRACE
 														{ $$ = InstrumentSemanticAction($1, $4, $5); }
 	;
 
-active_range: ACTIVE INTEGER MELODIC_SILENCE INTEGER	{ $$ = ActiveRangeSemanticAction($2, $4); }
+active_range: ACTIVE INTEGER RANGE_SEPARATOR INTEGER	{ $$ = ActiveRangeSemanticAction($2, $4); }
 	;
 
 %%

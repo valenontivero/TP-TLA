@@ -30,7 +30,6 @@ RhythmElementList * RhythmElementListSemanticAction(RhythmElement * element, Rhy
 RhythmElement * HitElementSemanticAction();
 RhythmElement * SilenceElementSemanticAction();
 RhythmElement * NoteElementSemanticAction(char * noteValue);
-RhythmElement * MelodicSilenceElementSemanticAction();
 InstrumentList * InstrumentListSemanticAction(Instrument * instrument, InstrumentList * next);
 Instrument * InstrumentSemanticAction(char * name, char * patternName, ActiveRange * activeRange);
 ActiveRange * ActiveRangeSemanticAction(int start, int end);

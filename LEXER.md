@@ -17,7 +17,7 @@ docker compose run --rm -e LOGGING_LEVEL=ALL compiler bash -c \
 
 ## Implementation Summary
 
-### 26 Token Types Implemented
+### 25 Token Types Implemented
 
 **Keywords (8):**
 `remember`, `tempo`, `compasses`, `steps`, `pattern`, `rhythm`, `instruments`, `active`
@@ -29,8 +29,6 @@ docker compose run --rm -e LOGGING_LEVEL=ALL compiler bash -c \
 - `HIT` - Percussion hit: `x`
 - `SILENCE` - Percussion rest: `.`
 
-**Special (1):**
-- `MELODIC_SILENCE` - Melodic rest: `-`
 
 **Identifiers (1):**
 - `ID` - Pattern/instrument names (kickPattern, bass)
@@ -38,8 +36,8 @@ docker compose run --rm -e LOGGING_LEVEL=ALL compiler bash -c \
 **Operators (2):**
 - `+` (concatenation), `*` (repetition)
 
-**Delimiters (5):**
-- `{`, `}`, `[`, `]`, `,`
+**Delimiters (6):**
+- `{`, `}`, `[`, `]`, `,`, `-` (range separator)
 
 ---
 
