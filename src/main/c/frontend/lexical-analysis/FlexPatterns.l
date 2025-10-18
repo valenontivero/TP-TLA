@@ -78,6 +78,7 @@ whitespace			[[:space:]]+
 "x"									{ return HitLexemeAction(); }
 "."									{ return SilenceLexemeAction(); }
 /* TODO Delete this silence. '-' should only be acitive delimitator */
+"-"									{ return MelodicSilenceLexemeAction(); }
 
 \"([^\\\"]|\\.)*\"					{ return StringLiteralLexemeAction(); }
 
