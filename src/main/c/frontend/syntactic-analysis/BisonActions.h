@@ -33,5 +33,6 @@ RhythmElement * NoteElementSemanticAction(char * noteValue);
 InstrumentList * InstrumentListSemanticAction(Instrument * instrument, InstrumentList * next);
 Instrument * InstrumentSemanticAction(char * name, char * patternName, ActiveRange * activeRange);
 ActiveRange * ActiveRangeSemanticAction(int start, int end);
+ActiveRange * ActiveRangeConcatenationSemanticAction(ActiveRange * left, ActiveRange * right);
 
 #endif

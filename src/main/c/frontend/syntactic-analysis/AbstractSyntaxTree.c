@@ -147,8 +147,9 @@ void destroyInstrument(Instrument * instrument) {
 }
 
 void destroyActiveRange(ActiveRange * activeRange) {
-	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
-	if (activeRange != NULL) {
-		free(activeRange);
-	}
+    logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
+    if (activeRange != NULL) {
+        destroyActiveRange(activeRange->next);  // Destruir recursivamente
+        free(activeRange);
+    }
 }

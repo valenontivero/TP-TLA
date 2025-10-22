@@ -175,5 +175,16 @@ ActiveRange * ActiveRangeSemanticAction(int start, int end) {
 	ActiveRange * range = calloc(1, sizeof(ActiveRange));
 	range->start = start;
 	range->end = end;
+	range->next = NULL;
 	return range;
+}
+
+ActiveRange * ActiveRangeConcatenationSemanticAction(ActiveRange * left, ActiveRange * right) {
+    _logSyntacticAnalyzerAction(__FUNCTION__);
+    ActiveRange * current = left;
+    while (current->next != NULL) {
+        current = current->next;
+    }
+    current->next = right;
+    return left;
 }

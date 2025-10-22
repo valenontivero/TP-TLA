@@ -129,6 +129,7 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %type <instrumentList> instrument_list_opt
 %type <instrument> instrument_def
 %type <activeRange> active_range
+%type <activeRange> active_range_list
 %type <instrumentList> instruments_opt
 %type <declarations> declarations_opt
 
@@ -261,11 +262,15 @@ instrument_list: instrument_def							{ $$ = InstrumentListSemanticAction($1, NU
 	| instrument_list instrument_def					{ $$ = InstrumentListSemanticAction($2, $1); }
 	;
 
-instrument_def: ID OPEN_BRACE PATTERN ID active_range CLOSE_BRACE
-														{ $$ = InstrumentSemanticAction($1, $4, $5); }
+instrument_def: ID OPEN_BRACE PATTERN ID ACTIVE active_range_list CLOSE_BRACE
+														{ $$ = InstrumentSemanticAction($1, $4, $6); }
 	;
 
-active_range: ACTIVE INTEGER RANGE_SEPARATOR INTEGER	{ $$ = ActiveRangeSemanticAction($2, $4); }
+active_range_list: active_range							{ $$ = $1; }
+    | active_range_list ADD active_range				{ $$ = ActiveRangeConcatenationSemanticAction($1, $3); }
+    ;
+
+active_range: INTEGER RANGE_SEPARATOR INTEGER	{ $$ = ActiveRangeSemanticAction($1, $3); }
 	;
 
 %%

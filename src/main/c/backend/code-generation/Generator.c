@@ -86,10 +86,19 @@ static void _generateInstrumentList(InstrumentList * instrumentList) {
 				_output(1, "Instrument: %s\n", current->instrument->name);
 				_output(2, "Pattern: %s\n", current->instrument->patternName);
 				if (current->instrument->activeRange != NULL) {
-					_output(2, "Active: %d-%d\n",
-						current->instrument->activeRange->start,
-						current->instrument->activeRange->end);
-				}
+                    _output(2, "Active: ");
+                    ActiveRange * range = current->instrument->activeRange;
+                    bool first = true;
+                    while (range != NULL) {
+                        if (!first) {
+                            printf(" + ");
+                        }
+                        printf("%d-%d", range->start, range->end);
+                        first = false;
+                        range = range->next;
+                    }
+                    printf("\n");
+                }
 			}
 			current = current->next;
 		}

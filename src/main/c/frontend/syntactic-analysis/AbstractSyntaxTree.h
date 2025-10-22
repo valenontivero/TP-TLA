@@ -123,6 +123,7 @@ struct PatternList {
 struct ActiveRange {
 	int start;
 	int end;
+	ActiveRange * next;
 };
 
 /**
