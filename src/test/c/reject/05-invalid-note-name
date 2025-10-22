@@ -1,0 +1,14 @@
+tempo 120
+compasses 4
+steps 4
+
+pattern melody {
+    rhythm [H5,Z9,X3,.]
+}
+
+instruments {
+    synth {
+        pattern melody
+        active 1-4
+    }
+}

@@ -1,4 +1,4 @@
-# Parser (Análisis Sintáctico) - Complete ✓
+# Parser (Syntactic Analysis) - Complete
 
 ## Quick Start
 
@@ -19,44 +19,47 @@ docker compose run --rm -e LOGGING_LEVEL=INFORMATION compiler bash -c \
 
 ### Grammar Structure
 
-La gramática implementada sigue la especificación de NextSteps.md:
+The implemented grammar follows the specification from NextSteps.md:
 
 **G = ⟨Σ, Ν, Π, S⟩**
 
-- **Σ (Alfabeto)**: 26 tokens definidos en el análisis léxico
-- **Ν (No-terminales)**: program, import_list, import_stmt, declarations, pattern_list, pattern_def, rhythm_expr, rhythm_array, instrument_list, instrument_def, active_range
-- **Π (Producciones)**: Reglas libres de contexto (tipo 2, Chomsky)
-- **S (Símbolo inicial)**: program
+- **Σ (Alphabet)**: 24 tokens defined in lexical analysis
+- **Ν (Non-terminals)**: program, import_list, import_stmt, declarations, pattern_list, pattern_def, rhythm_expr, rhythm_array, instrument_list, instrument_def, active_range, active_range_list
+- **Π (Productions)**: Context-free rules (Type 2, Chomsky)
+- **S (Start symbol)**: program
 
 ### Non-Terminals
 
 ```c
 program              // imports + declarations + patterns + instruments
-import_list          // lista de statements remember
-import_stmt          // statement remember individual
+import_list          // list of remember statements
+import_stmt          // individual remember statement
 declarations         // tempo, compasses, steps
-pattern_list         // lista de definiciones de patrones
-pattern_def          // definición de un patrón
-rhythm_expr          // expresión rítmica (array, concatenación, repetición)
+pattern_list         // list of pattern definitions
+pattern_def          // pattern definition
+rhythm_expr          // rhythm expression (array, concatenation, repetition)
 rhythm_array         // [x,.,x,.]
-rhythm_element_list  // lista de elementos rítmicos
-rhythm_element       // x, ., nota, -
-instrument_list      // lista de instrumentos
-instrument_def       // definición de un instrumento
-active_range         // rango activo (1-16)
+rhythm_element_list  // list of rhythm elements
+rhythm_element       // x, ., note
+instrument_list      // list of instruments
+instrument_def       // instrument definition
+active_range         // active range (1-16)
+active_range_list    // concatenated active ranges (1-4 + 6-8)
 ```
 
 ### Productions
 
 ```
-program → import_list? declarations pattern_list? INSTRUMENTS { instrument_list }
+program → import_list? declarations? pattern_list? instruments?
 
 import_list → import_stmt
             | import_list import_stmt
 
 import_stmt → REMEMBER STRING_LITERAL
 
-declarations → TEMPO INTEGER COMPASSES INTEGER STEPS INTEGER
+declarations → TEMPO INTEGER
+             | TEMPO INTEGER COMPASSES INTEGER
+             | TEMPO INTEGER COMPASSES INTEGER STEPS INTEGER
 
 pattern_list → pattern_def
              | pattern_list pattern_def
@@ -72,45 +75,49 @@ rhythm_array → [ rhythm_element_list ]
 rhythm_element_list → rhythm_element
                     | rhythm_element_list , rhythm_element
 
-rhythm_element → x | . | NOTE | -
+rhythm_element → x | . | NOTE
 
 instrument_list → instrument_def
                 | instrument_list instrument_def
 
-instrument_def → ID { PATTERN ID active_range }
+instrument_def → ID { PATTERN ID ACTIVE active_range_list }
 
-active_range → ACTIVE INTEGER - INTEGER
+active_range_list → active_range
+                  | active_range_list + active_range
+
+active_range → INTEGER - INTEGER
 ```
 
 ### AST Structures
 
-Las estructuras del AST se definen en `AbstractSyntaxTree.h`:
+The AST structures are defined in `AbstractSyntaxTree.h`:
 
 - **Program**: imports + declarations + patterns + instruments
-- **ImportStatement**: ruta del archivo (string)
-- **ImportList**: lista enlazada de import statements
-- **Declarations**: tempo, compasses, steps (enteros)
-- **Pattern**: nombre + rhythm expression
-- **RhythmExpression**: array, concatenación, o repetición
-- **RhythmArray**: lista de elementos
-- **RhythmElement**: HIT (x), SILENCE (.), NOTE, MELODIC_SILENCE (-)
-- **Instrument**: nombre + pattern reference + active range
-- **ActiveRange**: start, end (enteros)
+- **ImportStatement**: file path (string)
+- **ImportList**: linked list of import statements
+- **Declarations**: tempo, compasses, steps (integers)
+- **Pattern**: name + rhythm expression
+- **RhythmExpression**: array, concatenation, or repetition
+- **RhythmArray**: list of elements
+- **RhythmElement**: HIT (x), SILENCE (.), NOTE
+- **Instrument**: name + pattern reference + active range list
+- **ActiveRange**: start, end (integers) + next pointer for concatenation
 
 ### Semantic Actions
 
-Implementadas en `BisonActions.c`:
+Implemented in `BisonActions.c`:
 
-- `ProgramSemanticAction`: Construye el nodo raíz del AST
-- `ImportListSemanticAction`: Construye lista de imports
-- `ImportStatementSemanticAction`: Crea statement remember individual
-- `DeclarationsSemanticAction`: Crea nodo de declaraciones
-- `PatternSemanticAction`: Crea definición de patrón
-- `RhythmArrayExpressionSemanticAction`: Crea expresión de array
-- `RhythmConcatenationSemanticAction`: Maneja operador +
-- `RhythmRepetitionSemanticAction`: Maneja operador *
-- `InstrumentSemanticAction`: Crea definición de instrumento
-- `ActiveRangeSemanticAction`: Crea rango activo
+- `ProgramSemanticAction`: Builds the AST root node
+- `ImportListSemanticAction`: Builds import list
+- `ImportStatementSemanticAction`: Creates individual remember statement
+- `DeclarationsSemanticAction`: Creates declarations node
+- `PatternSemanticAction`: Creates pattern definition
+- `RhythmArrayExpressionSemanticAction`: Creates array expression
+- `RhythmConcatenationSemanticAction`: Handles + operator
+- `RhythmRepetitionSemanticAction`: Handles * operator
+- `InstrumentSemanticAction`: Creates instrument definition
+- `ActiveRangeSemanticAction`: Creates active range
+- `ActiveRangeConcatenationSemanticAction`: Handles range concatenation
 
 ---
 
@@ -135,7 +142,7 @@ pattern bassPattern {
 instruments {
     kick {
         pattern kickPattern
-        active 1-16
+        active 1-4 + 6-8 + 10-16
     }
     bass {
         pattern bassPattern
@@ -162,18 +169,10 @@ Instruments:
         Active: 8-16
     Instrument: kick
         Pattern: kickPattern
-        Active: 1-16
+        Active: 1-4 + 6-8 + 10-16
 
 === End of Program ===
 ```
-
----
-
-## Test Files
-
-Located in `src/test/c/accept/`:
-- `11-simple-program` - Programa simple con un patrón y un instrumento
-- `12-complex-program` - Programa completo con repetición (*) y concatenación (+)
 
 ---
 
@@ -182,33 +181,39 @@ Located in `src/test/c/accept/`:
 ### Precedence and Associativity
 
 ```c
-%left ADD   // Concatenación (+): asociatividad izquierda
-%left MUL   // Repetición (*): mayor precedencia
+%left ADD   // Concatenation (+): left associativity
+%left MUL   // Repetition (*): higher precedence
 ```
 
-Esto significa que:
-- `[x] + [.] + [-]` se evalúa como `([x] + [.]) + [-]`
-- `[x] * 2 + [.]` se evalúa como `([x] * 2) + [.]`
+This means:
+- `[x] + [.] + [x]` evaluates as `([x] + [.]) + [x]`
+- `[x] * 2 + [.]` evaluates as `([x] * 2) + [.]`
 
 ### Memory Management
 
-- Todos los nodos del AST se crean con `calloc()`
-- Los destructores liberan recursivamente toda la memoria
-- Las cadenas (ID, NOTE) se copian con `strdup()` y se liberan en los destructores
+- All AST nodes are created with `calloc()`
+- Destructors recursively free all memory
+- Strings (ID, NOTE) are copied with `strdup()` and freed in destructors
 
 ### Operator Semantics
 
-**Repetición (`* N`):**
+**Repetition (`* N`):**
 ```
 [x,.,x,.] * 4
 ```
-Repite el array 4 veces.
+Repeats the array 4 times.
 
-**Concatenación (`+`):**
+**Concatenation (`+`):**
 ```
 [E2,G2] + [A2,C3]
 ```
-Concatena dos expresiones rítmicas.
+Concatenates two rhythm expressions.
+
+**Range Concatenation:**
+```
+active 1-4 + 6-8 + 10-12
+```
+Creates multiple active ranges for an instrument.
 
 ---
 
@@ -216,17 +221,17 @@ Concatena dos expresiones rítmicas.
 
 ### Files Modified
 
-1. **AbstractSyntaxTree.h** - Nuevas estructuras AST
-2. **AbstractSyntaxTree.c** - Destructores para todas las estructuras
-3. **BisonGrammar.y** - Gramática completa con producciones
-4. **BisonActions.h/c** - Acciones semánticas para construir AST
-5. **Generator.c** - Generador de salida simple
-6. **Calculator.c** - Desactivado (no relevante para DSL)
-7. **EntryPoint.c** - Modificado para usar generador directamente
+1. **AbstractSyntaxTree.h** - New AST structures
+2. **AbstractSyntaxTree.c** - Destructors for all structures
+3. **BisonGrammar.y** - Complete grammar with productions
+4. **BisonActions.h/c** - Semantic actions to build AST
+5. **Generator.c** - Simple output generator
+6. **Calculator.c** - Disabled (not relevant for DSL)
+7. **EntryPoint.c** - Modified to use generator directly
 
 ### Key Design Decisions
 
-**1. RhythmExpression como unión:**
+**1. RhythmExpression as union:**
 ```c
 union {
     RhythmArray * array;
@@ -240,26 +245,32 @@ union {
     } repetition;
 };
 ```
-Permite representar tres tipos de expresiones rítmicas sin desperdiciar memoria.
+Allows representing three types of rhythm expressions without wasting memory.
 
-**2. Listas enlazadas para patterns e instruments:**
-Simplifica la construcción del AST en modo bottom-up (LALR parser).
+**2. Linked lists for patterns, instruments, and active ranges:**
+Simplifies AST construction in bottom-up mode (LALR parser).
 
-**3. Uso unificado de SILENCE:**
-- `.` (SILENCE) - silencio universal (percusión y melódico)
+**3. Unified silence:**
+- `.` (SILENCE) - universal silence for both percussion and melody
+- No melodic-specific silence token
+
+**4. Active range concatenation:**
+- Active ranges use linked list structure
+- Supports multiple discontinuous ranges per instrument
+- Example: `active 1-4 + 6-8 + 10-12`
 
 ---
 
 ## Status
 
-✓ **Syntactic Analysis: COMPLETE**
-- Gramática libre de contexto implementada
-- AST completo construido
-- Acciones semánticas funcionando
-- Destructores implementados
-- Casos de prueba pasando
-- Sin conflictos shift/reduce ni reduce/reduce
+Syntactic Analysis: COMPLETE
+- Context-free grammar implemented
+- Complete AST constructed
+- Semantic actions working
+- Destructors implemented
+- Test cases passing
+- No shift/reduce or reduce/reduce conflicts
 
-**Next Phase:** Backend - Generación de audio/MIDI
+Next Phase: Backend - Audio/MIDI generation
 
 See `NextSteps.md` for next implementation steps.

@@ -1,48 +1,49 @@
-# 🎵 Drum Machine DSL - Quick Start
+# Drum Machine DSL - Quick Start
 
-## ✅ Verificar que TODO funciona (1 comando)
+## Verify Everything Works (1 command)
 
 ```bash
 ./test-complete.sh
 ```
 
-**Resultado esperado:**
+**Expected result:**
 ```
-✓ ALL TESTS PASSED!
-Total tests: 13
-Passed: 13
+ALL TESTS PASSED!
+Total tests: 25
+Passed: 25
 Failed: 0
 ```
 
-Si ves esto, **TODO está funcionando al 100%** ✨
+If you see this, everything is working correctly.
 
 ---
 
-## 📖 ¿Qué está implementado?
+## What's Implemented?
 
-### ✅ Análisis Léxico (Lexer)
-- 26 tipos de tokens reconocidos
+### Lexical Analysis (Lexer)
+- 24 token types recognized
 - Keywords: `remember`, `tempo`, `compasses`, `steps`, `pattern`, `rhythm`, `instruments`, `active`
-- Literales: números, notas musicales (E2, A#2, Bb3), rutas de archivos ("lib/patterns.dsl")
-- Símbolos: `x` (hit), `.` (silence), `-` (melodic silence)
-- Operadores: `+` (concatenación), `*` (repetición)
-- Delimitadores: `{}`, `[]`, `,`
+- Literals: numbers, musical notes (E2, A#2, Bb3), file paths ("lib/patterns.dsl")
+- Symbols: `x` (hit), `.` (universal silence)
+- Operators: `+` (concatenation), `*` (repetition)
+- Delimiters: `{}`, `[]`, `,`, `-` (range separator for active ranges)
 
-### ✅ Análisis Sintáctico (Parser)
-- Gramática libre de contexto completa
-- AST (Abstract Syntax Tree) completo
-- Acciones semánticas funcionando
-- Gestión de memoria sin leaks
-- Soporte para `remember`: Permite referenciar archivos externos de patrones
+### Syntactic Analysis (Parser)
+- Complete context-free grammar
+- Complete AST (Abstract Syntax Tree)
+- Working semantic actions
+- Memory management without leaks
+- Support for `remember`: Allows referencing external pattern files
+- Support for active range concatenation: `active 1-4 + 6-8 + 10-12`
 
 ---
 
-## 🚀 Uso Básico
+## Basic Usage
 
-### 1. Crear un programa
+### 1. Create a program
 
 ```bash
-cat > mi-programa.dsl << 'EOF'
+cat > my-program.dsl << 'EOF'
 remember "lib/basic-patterns.dsl"
 
 tempo 120
@@ -60,7 +61,7 @@ pattern bassPattern {
 instruments {
     kick {
         pattern kickPattern
-        active 1-8
+        active 1-4 + 6-8
     }
     bass {
         pattern bassPattern
@@ -69,16 +70,17 @@ instruments {
 }
 EOF
 ```
-# ⚠️ TODO: 
-Mirándolo de vuelta, me parece que el instrumentro podría quedar declarado dentro de la declaración de pattern{}, y luego llamarlo con active dentro en instruments{}
-### 2. Compilar
+
+Note: There's a future consideration to allow declaring instruments within `pattern{}` blocks, but this is not currently implemented.
+
+### 2. Compile
 
 ```bash
 docker compose run --rm -e LOGGING_LEVEL=INFORMATION compiler bash -c \
-  "src/main/bash/run.sh mi-programa.dsl"
+  "src/main/bash/run.sh my-program.dsl"
 ```
 
-### 3. Ver resultado
+### 3. View result
 
 ```
 === Drum Machine Program ===
@@ -97,70 +99,76 @@ Instruments:
         Active: 1-8
     Instrument: kick
         Pattern: kickPattern
-        Active: 1-8
+        Active: 1-4 + 6-8
 
 === End of Program ===
 ```
 
 ---
 
-## 📚 Documentación Completa
+## Complete Documentation
 
-- **TESTING.md** - Guía completa de testing
-- **PARSER.md** - Documentación del parser
-- **LEXER.md** - Documentación del lexer
-- **NextSteps.md** - Requisitos originales del proyecto
+- **TESTING.md** - Complete testing guide
+- **PARSER.md** - Parser documentation
+- **LEXER.md** - Lexer documentation
+- **NextSteps.md** - Original project requirements
 
 ---
 
-## 🎯 Sintaxis del Lenguaje
+## Language Syntax
 
 ```
-programa ::= declarations patterns instruments
+program ::= imports? declarations? patterns? instruments?
+
+imports ::=
+    [remember STRING_LITERAL]*
 
 declarations ::=
-    tempo INTEGER
-    compasses INTEGER
-    steps INTEGER
+    tempo INTEGER [compasses INTEGER [steps INTEGER]?]?
 
 patterns ::=
     [pattern ID { rhythm rhythm_expr }]*
 
 rhythm_expr ::=
     | rhythm_array
-    | rhythm_expr + rhythm_expr      // concatenación
-    | rhythm_array * INTEGER         // repetición
+    | rhythm_expr + rhythm_expr      // concatenation
+    | rhythm_array * INTEGER         // repetition
 
 rhythm_array ::=
     [ rhythm_element [, rhythm_element]* ]
 
 rhythm_element ::=
-    | x           // hit (percusión)
-    | .           // silence (percusión)
-    | NOTE        // nota musical (E2, A#2, Bb3, etc.)
-    | -           // melodic silence
+    | x           // hit (percussion)
+    | .           // silence (universal)
+    | NOTE        // musical note (E2, A#2, Bb3, etc.)
 
 instruments ::=
     instruments {
         [ID {
             pattern ID
-            active INTEGER - INTEGER
+            active active_range_list
         }]*
     }
+
+active_range_list ::=
+    | active_range
+    | active_range_list + active_range   // range concatenation
+
+active_range ::= INTEGER - INTEGER
 ```
 
-### Sintaxis `remember` (opcional)
+### `remember` Syntax (optional)
 
 ```
 remember "path/to/file.dsl"
 ```
 
-**Uso:**
-- Permite referenciar archivos externos con definiciones de patrones
-- Debe aparecer al inicio del programa, antes de las declaraciones
-- Actualmente reconocido y parseado (carga de archivos no implementada)
+**Usage:**
+- Allows referencing external files with pattern definitions
+- Must appear at the start of the program, before declarations
+- Currently recognized and parsed (file loading not yet implemented)
 
-**Ejemplo:**
+**Example:**
 ```
 remember "lib/kick-patterns.dsl"
 remember "lib/snare-patterns.dsl"
@@ -173,48 +181,48 @@ steps 4
 
 ---
 
-## ⚡ Tests Rápidos
+## Quick Tests
 
-### Test Completo (recomendado)
+### Complete Test (recommended)
 ```bash
 ./test-complete.sh
 ```
 
-### Solo Lexer
+### Lexer Only
 ```bash
 ./test-lexer.sh
 ```
 
-### Solo Parser
+### Parser Only
 ```bash
 ./test-parser.sh
 ```
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Error: "command not found"
 ```bash
 chmod +x test-complete.sh test-lexer.sh test-parser.sh
 ```
 
-### Rebuild del proyecto
+### Rebuild the project
 ```bash
 docker compose run --rm compiler bash -c "src/main/bash/build.sh"
 ```
 
-### Ver logs detallados
+### View detailed logs
 ```bash
 docker compose run --rm -e LOGGING_LEVEL=ALL compiler bash -c \
-  "src/main/bash/run.sh <archivo>" 2>&1 | less
+  "src/main/bash/run.sh <file>" 2>&1 | less
 ```
 
 ---
 
-## ✨ Ejemplos
+## Examples
 
-### Ejemplo 1: Programa simple
+### Example 1: Simple program
 ```
 tempo 120
 compasses 4
@@ -232,7 +240,7 @@ instruments {
 }
 ```
 
-### Ejemplo 2: Con repetición
+### Example 2: With repetition
 ```
 tempo 140
 compasses 8
@@ -250,14 +258,14 @@ instruments {
 }
 ```
 
-### Ejemplo 3: Con concatenación
+### Example 3: With concatenation
 ```
 tempo 120
 compasses 8
 steps 4
 
 pattern melody {
-    rhythm [E2,G2] + [A2,C3] + [E2,G2] + [A2,-]
+    rhythm [E2,G2] + [A2,C3] + [E2,G2] + [A2,.]
 }
 
 instruments {
@@ -268,7 +276,7 @@ instruments {
 }
 ```
 
-### Ejemplo 4: Múltiples instrumentos
+### Example 4: Multiple instruments with range concatenation
 ```
 tempo 120
 compasses 16
@@ -289,7 +297,7 @@ pattern hihat {
 instruments {
     kick {
         pattern kick
-        active 1-16
+        active 1-4 + 6-8 + 10-16
     }
     snare {
         pattern snare
@@ -302,4 +310,6 @@ instruments {
 }
 ```
 
-**Siguiente fase:** Backend - Generación de audio/MIDI
+---
+
+Next phase: Backend - Audio/MIDI generation

@@ -1,5 +1,10 @@
+tempo 120
 compasses 4
 steps 4
+
+kickPattern {
+    rhythm [x,.,x,.]
+}
 
 instruments {
     kick {

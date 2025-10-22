@@ -1,43 +1,44 @@
-# Guía de Testing - Drum Machine DSL
+# Testing Guide - Drum Machine DSL
 
-## 🚀 Testing Rápido
+## Quick Testing
 
-Para probar que **TODO funciona correctamente al 100%**, ejecuta:
+To verify everything works correctly, run:
 
 ```bash
 ./test-complete.sh
 ```
 
-Este script ejecuta **13 tests comprehensivos** que verifican:
-- ✅ Análisis léxico (24 tipos de tokens)
-- ✅ Análisis sintáctico (gramática completa)
-- ✅ Construcción del AST
-- ✅ Casos de aceptación
-- ✅ Casos de rechazo
-- ✅ Casos edge
-- ✅ Operadores (concatenación y repetición)
+This script runs 25 comprehensive tests that verify:
+- Lexical analysis (24 token types)
+- Syntactic analysis (complete grammar)
+- AST construction
+- Acceptance cases
+- Rejection cases
+- Edge cases
+- Operators (concatenation and repetition)
+- Range concatenation
 
 ---
 
-## 📋 Tests Individuales
+## Individual Tests
 
-### 1. Lexer (Análisis Léxico)
+### 1. Lexer (Lexical Analysis)
 
 ```bash
 ./test-lexer.sh
 ```
 
-Prueba que el lexer reconoce correctamente los 24 tipos de tokens.
+Tests that the lexer correctly recognizes all 24 token types.
 
-### 2. Parser (Análisis Sintáctico)
+### 2. Parser (Syntactic Analysis)
 
 ```bash
 ./test-parser.sh
 ```
 
-Prueba el parser con programas completos.
+Tests the parser with complete programs.
 
-### 3. Test Manual de un Programa
+### 3. Manual Test of a Program
 
 ```bash
 docker compose run --rm -e LOGGING_LEVEL=INFORMATION compiler bash -c \
@@ -46,119 +47,116 @@ docker compose run --rm -e LOGGING_LEVEL=INFORMATION compiler bash -c \
 
 ---
 
-## 📝 Casos de Prueba Incluidos
+## Test Cases Included
 
-### Casos de Aceptación (✓ deben pasar)
+### Acceptance Cases (must pass)
 
-1. **11-simple-program** - Programa básico
-   - 1 patrón, 1 instrumento
-   - Array simple `[x,.,x,.]`
+1. **11-simple-program** - Basic program
+   - 1 pattern, 1 instrument
+   - Simple array `[x,.,x,.]`
 
-2. **12-complex-program** - Programa completo
-   - 2 patrones
-   - Repetición: `[x,.,x,.] * 4`
-   - Concatenación: `[E2,G2] + [A2,C3]`
-   - 2 instrumentos
+2. **12-complex-program** - Complete program
+   - 2 patterns
+   - Repetition: `[x,.,x,.] * 4`
+   - Concatenation: `[E2,G2] + [A2,C3]`
+   - 2 instruments
 
-3. **13-concatenation** - Operador +
-   - Concatenación de arrays
+3. **13-concatenation** - Operator +
+   - Array concatenation
 
-4. **14-repetition** - Operador *
-   - Repetición de array
+4. **14-repetition** - Operator *
+   - Array repetition
 
-5. **15-multiple-instruments** - Múltiples instrumentos
-   - 3 patrones
-   - 3 instrumentos (kick, snare, hihat)
+5. **15-multiple-instruments** - Multiple instruments
+   - 3 patterns
+   - 3 instruments (kick, snare, hihat)
 
-6. **16-melodic-silence** - Silencio melódico
-   - Uso de `-` en melodías
-
-7. **17-mixed-operations** - Operaciones mixtas
+6. **17-mixed-operations** - Mixed operations
    - `[x,.] * 2 + [x,x] + [.,.] * 2`
-   - Precedencia correcta
+   - Correct precedence
 
-8. **18-no-patterns** - Sin patrones
-   - Solo declarations e instruments vacío
+7. **18-no-patterns** - Without patterns
+   - Only declarations and empty instruments
 
-9. **19-accidentals** - Accidentales
-   - Notas con # y b: `C#4`, `Eb4`, `Gb4`
+8. **19-accidentals** - Accidentals
+   - Notes with # and b: `C#4`, `Eb4`, `Gb4`
 
-### Casos de Rechazo (✗ deben fallar)
+### Rejection Cases (must fail)
 
-10. **01-missing-tempo** - Falta declaración obligatoria
+9. **01-missing-tempo** - Missing required declaration
 
-11. **02-missing-brace** - Sintaxis incorrecta (llave faltante)
+10. **02-missing-brace** - Incorrect syntax (missing brace)
 
-12. **03-invalid-token** - Token inválido (`@`)
+11. **03-invalid-token** - Invalid token (`@`)
 
-13. **04-missing-rhythm-keyword** - Falta keyword obligatoria
+12. **04-missing-rhythm-keyword** - Missing required keyword
 
 ---
 
-## 🔍 Qué Verifica Cada Test
+## What Each Test Verifies
 
 ### PHASE 2: Parser Tests - Accept
-Verifica que programas válidos se acepten y parseen correctamente.
+Verifies that valid programs are accepted and parsed correctly.
 
 ### PHASE 3: Parser Tests - Reject
-Verifica que programas inválidos se rechacen apropiadamente.
+Verifies that invalid programs are rejected appropriately.
 
 ### PHASE 4: Advanced Features
-- **Concatenación**: `rhythm1 + rhythm2`
-- **Repetición**: `rhythm * N`
-- **Múltiples instrumentos**
-- **Silencios melódicos**: `-`
-- **Operaciones mixtas**: Precedencia correcta
+- **Concatenation**: `rhythm1 + rhythm2`
+- **Repetition**: `rhythm * N`
+- **Multiple instruments**
+- **Mixed operations**: Correct precedence
+- **Range concatenation**: `active 1-4 + 6-8`
 
 ### PHASE 5: Edge Cases
-- **Instrumentos vacíos**: Programa mínimo válido
-- **Accidentales**: Soporte completo de # y b en notas
+- **Empty instruments**: Minimal valid program
+- **Accidentals**: Complete support for # and b in notes
 
 ---
 
-## ✅ Resultado Esperado
+## Expected Result
 
-Al ejecutar `./test-complete.sh`, deberías ver:
+When running `./test-complete.sh`, you should see:
 
 ```
 ==========================================
-✓ ALL TESTS PASSED!
+ALL TESTS PASSED!
 ==========================================
 
 The Drum Machine DSL compiler is working correctly!
 
 Summary:
-  ✓ Lexer: All 24 token types recognized
-  ✓ Parser: Complete grammar implemented
-  ✓ AST: Full tree construction
-  ✓ Semantic actions: All working
-  ✓ Memory management: No leaks
+  Lexer: All 24 token types recognized
+  Parser: Complete grammar implemented
+  AST: Full tree construction
+  Semantic actions: All working
+  Memory management: No leaks
 
-Total tests: 13
-Passed: 13
+Total tests: 25
+Passed: 25
 Failed: 0
 ```
 
 ---
 
-## 🐛 Si Algo Falla
+## If Something Fails
 
-### 1. Rebuild del proyecto
+### 1. Rebuild the project
 
 ```bash
 docker compose run --rm compiler bash -c "src/main/bash/build.sh"
 ```
 
-### 2. Ver errores detallados
+### 2. View detailed errors
 
 ```bash
 docker compose run --rm -e LOGGING_LEVEL=ALL compiler bash -c \
-  "src/main/bash/run.sh <archivo-de-test>" 2>&1 | less
+  "src/main/bash/run.sh <test-file>" 2>&1 | less
 ```
 
-### 3. Verificar sintaxis del programa
+### 3. Verify program syntax
 
-Asegúrate que el programa siga la sintaxis:
+Ensure the program follows the syntax:
 
 ```
 tempo <INTEGER>
@@ -172,36 +170,41 @@ steps <INTEGER>
 instruments {
     [<ID> {
         pattern <ID>
-        active <INTEGER>-<INTEGER>
+        active <active_range_list>
     }]*
 }
 ```
 
+Where `active_range_list` can be:
+- Single range: `1-16`
+- Multiple ranges: `1-4 + 6-8 + 10-12`
+
 ---
 
-## 📊 Cobertura de Tests
+## Test Coverage
 
-| Componente | Tests | Estado |
-|------------|-------|--------|
-| Lexer - Keywords | ✓ | 7/7 keywords |
-| Lexer - Literals | ✓ | INTEGER, NOTE |
-| Lexer - Symbols | ✓ | x, ., - |
+| Component | Tests | Status |
+|-----------|-------|--------|
+| Lexer - Keywords | ✓ | 8 keywords |
+| Lexer - Literals | ✓ | INTEGER, NOTE, STRING_LITERAL |
+| Lexer - Symbols | ✓ | x, . |
 | Lexer - Operators | ✓ | +, * |
-| Lexer - Delimiters | ✓ | {, }, [, ], , |
+| Lexer - Delimiters | ✓ | {, }, [, ], , , - |
 | Parser - Declarations | ✓ | tempo, compasses, steps |
 | Parser - Patterns | ✓ | pattern definitions |
 | Parser - Rhythms | ✓ | arrays, +, * |
 | Parser - Instruments | ✓ | instrument definitions |
 | Parser - Active Range | ✓ | N-M notation |
+| Parser - Range Concat | ✓ | N-M + N-M notation |
 | AST Construction | ✓ | Full tree |
 | Memory Management | ✓ | No leaks |
 | Error Detection | ✓ | Reject invalid |
 
 ---
 
-## 🎯 Tests de Integración
+## Integration Tests
 
-### Programa Completo Funcional
+### Complete Functional Program
 
 ```bash
 cat > test-program.txt << 'EOF'
@@ -214,13 +217,13 @@ pattern kickPattern {
 }
 
 pattern bassPattern {
-    rhythm [E2,G2,A2,.] + [E2,G2,A#2,A2] + [E2,G2,A2,.] + [G2,E2,-,-]
+    rhythm [E2,G2,A2,.] + [E2,G2,A#2,A2] + [E2,G2,A2,.] + [G2,E2,.,.]
 }
 
 instruments {
     kick {
         pattern kickPattern
-        active 1-16
+        active 1-4 + 10-16
     }
     bass {
         pattern bassPattern
@@ -233,7 +236,7 @@ docker compose run --rm -e LOGGING_LEVEL=INFORMATION compiler bash -c \
   "src/main/bash/run.sh test-program.txt"
 ```
 
-Deberías ver:
+You should see:
 ```
 === Drum Machine Program ===
 
@@ -251,44 +254,44 @@ Instruments:
         Active: 8-16
     Instrument: kick
         Pattern: kickPattern
-        Active: 1-16
+        Active: 1-4 + 10-16
 
 === End of Program ===
 ```
 
 ---
 
-## 🔬 Debugging
+## Debugging
 
-### Ver tokens reconocidos
+### View recognized tokens
 
 ```bash
 docker compose run --rm -e LOGGING_LEVEL=ALL compiler bash -c \
-  "src/main/bash/run.sh <programa>" 2>&1 | grep "FlexActions"
+  "src/main/bash/run.sh <program>" 2>&1 | grep "FlexActions"
 ```
 
-### Ver acciones semánticas
+### View semantic actions
 
 ```bash
 docker compose run --rm -e LOGGING_LEVEL=ALL compiler bash -c \
-  "src/main/bash/run.sh <programa>" 2>&1 | grep "BisonActions"
+  "src/main/bash/run.sh <program>" 2>&1 | grep "BisonActions"
 ```
 
-### Ver construcción del AST
+### View AST construction
 
 ```bash
 docker compose run --rm -e LOGGING_LEVEL=ALL compiler bash -c \
-  "src/main/bash/run.sh <programa>" 2>&1 | grep "destructor"
+  "src/main/bash/run.sh <program>" 2>&1 | grep "destructor"
 ```
 
 ---
 
-## ✨ Resumen
+## Summary
 
-**Para probar que TODO funciona al 100%:**
+To verify everything works correctly:
 
 ```bash
 ./test-complete.sh
 ```
 
-Si ves `✓ ALL TESTS PASSED!`, el compilador está funcionando perfectamente.
+If you see `ALL TESTS PASSED!`, the compiler is working perfectly.

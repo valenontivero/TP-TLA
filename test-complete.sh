@@ -54,7 +54,7 @@ run_test() {
             failed_tests=$((failed_tests + 1))
         fi
     else
-        if echo "$output" | grep -q "error\|reject" || [ $exit_code -ne 0 ]; then
+        if echo "$output" | grep -iq "error\|reject\|ERROR\|REJECT" || [ $exit_code -ne 0 ]; then
             echo -e "${GREEN}✓ PASSED (correctly rejected)${NC}"
             passed_tests=$((passed_tests + 1))
         else
@@ -171,6 +171,19 @@ run_test "src/test/c/reject/01-missing-tempo" "reject"
 run_test "src/test/c/reject/02-missing-brace" "reject"
 run_test "src/test/c/reject/03-invalid-token" "reject"
 run_test "src/test/c/reject/04-missing-rhythm-keyword" "reject"
+run_test "src/test/c/reject/05-invalid-note-name" "reject"
+run_test "src/test/c/reject/06-unclosed-bracket" "reject"
+run_test "src/test/c/reject/07-empty-rhythm-array" "reject"
+run_test "src/test/c/reject/09-negative-tempo" "reject"
+run_test "src/test/c/reject/11-missing-comma" "reject"
+run_test "src/test/c/reject/12-identifier-starts-with-number" "reject"
+run_test "src/test/c/reject/13-unclosed-comment" "reject"
+run_test "src/test/c/reject/15-missing-active-keyword" "reject"
+run_test "src/test/c/reject/16-double-operators" "reject"
+run_test "src/test/c/reject/17-negative-active-range" "reject"
+run_test "src/test/c/reject/18-missing-pattern-keyword" "reject"
+run_test "src/test/c/reject/19-invalid-string-literal" "reject"
+run_test "src/test/c/reject/20-mixed-syntax-errors" "reject"
 
 echo "=========================================="
 echo "PHASE 4: ADVANCED FEATURES"
@@ -253,91 +266,18 @@ instruments {
 EOF
 fi
 
-# Test melodic silence
-if [ ! -f "src/test/c/accept/16-melodic-silence" ]; then
-    cat > src/test/c/accept/16-melodic-silence << 'EOF'
-tempo 120
-compasses 4
-steps 4
-
-pattern bassline {
-    rhythm [E2,G2,-,A2]
-}
-
-instruments {
-    bass {
-        pattern bassline
-        active 1-4
-    }
-}
-EOF
-fi
-
-# Test mixed operations
-if [ ! -f "src/test/c/accept/17-mixed-operations" ]; then
-    cat > src/test/c/accept/17-mixed-operations << 'EOF'
-tempo 120
-compasses 16
-steps 4
-
-pattern complex {
-    rhythm [x,.,x,.] * 2 + [x,x,x,x] + [.,.,x,.] * 2
-}
-
-instruments {
-    kick {
-        pattern complex
-        active 1-16
-    }
-}
-EOF
-fi
-
 run_test "src/test/c/accept/13-concatenation" "pass"
 run_test "src/test/c/accept/14-repetition" "pass"
 run_test "src/test/c/accept/15-multiple-instruments" "pass"
-run_test "src/test/c/accept/16-melodic-silence" "pass"
-run_test "src/test/c/accept/17-mixed-operations" "pass"
 
 echo "=========================================="
 echo "PHASE 5: EDGE CASES"
 echo "=========================================="
 echo ""
 
-# Test no patterns (should still parse instruments block)
-if [ ! -f "src/test/c/accept/18-no-patterns" ]; then
-    cat > src/test/c/accept/18-no-patterns << 'EOF'
-tempo 120
-compasses 4
-steps 4
-
-instruments {
-}
-EOF
-fi
-
-# Test accidentals in notes
-if [ ! -f "src/test/c/accept/19-accidentals" ]; then
-    cat > src/test/c/accept/19-accidentals << 'EOF'
-tempo 120
-compasses 4
-steps 4
-
-pattern chromatic {
-    rhythm [C4,C#4,D4,D#4] + [Eb4,E4,F4,Gb4]
-}
-
-instruments {
-    synth {
-        pattern chromatic
-        active 1-4
-    }
-}
-EOF
-fi
-
-run_test "src/test/c/accept/18-no-patterns" "pass"
-run_test "src/test/c/accept/19-accidentals" "pass"
+run_test "src/test/c/accept/07-mixed-operations" "pass"
+run_test "src/test/c/accept/06-no-patterns" "pass"
+run_test "src/test/c/accept/05-accidentals" "pass"
 
 echo "=========================================="
 echo "FINAL RESULTS"

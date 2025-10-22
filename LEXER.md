@@ -1,4 +1,4 @@
-# Lexical Analyzer - Complete ✓
+# Lexical Analyzer - Complete
 
 ## Quick Start
 
@@ -17,18 +17,17 @@ docker compose run --rm -e LOGGING_LEVEL=ALL compiler bash -c \
 
 ## Implementation Summary
 
-### 25 Token Types Implemented
+### 24 Token Types Implemented
 
 **Keywords (8):**
 `remember`, `tempo`, `compasses`, `steps`, `pattern`, `rhythm`, `instruments`, `active`
 
-**Literals (5):**
+**Literals (4):**
 - `INTEGER` - Numbers (120, 16, 4)
 - `NOTE` - Musical notes (E2, A#2, Bb3)
 - `STRING_LITERAL` - File paths ("lib/patterns.dsl")
 - `HIT` - Percussion hit: `x`
-- `SILENCE` - Percussion rest: `.`
-
+- `SILENCE` - Universal silence: `.`
 
 **Identifiers (1):**
 - `ID` - Pattern/instrument names (kickPattern, bass)
@@ -37,7 +36,13 @@ docker compose run --rm -e LOGGING_LEVEL=ALL compiler bash -c \
 - `+` (concatenation), `*` (repetition)
 
 **Delimiters (6):**
-- `{`, `}`, `[`, `]`, `,`, `-` (range separator)
+- `{`, `}`, `[`, `]`, `,`
+- `-` (RANGE_SEPARATOR - used only in active ranges like `1-4`)
+
+**Special (3):**
+- Comments (multiline with `/* */`)
+- Whitespace (ignored)
+- Unknown tokens (error reporting)
 
 ---
 
@@ -75,62 +80,47 @@ SILENCE        "."
 ## Token Label Reference
 
 ```
-258 = TEMPO          266 = INTEGER        274 = CLOSE_BRACE (})
-259 = COMPASSES      267 = NOTE           275 = OPEN_BRACKET ([)
-260 = STEPS          268 = HIT (x)        276 = CLOSE_BRACKET (])
-261 = PATTERN        269 = SILENCE (.)    277 = COMMA (,)
-262 = RHYTHM         270 = MELODIC_SILENCE (-)
-263 = INSTRUMENTS    271 = ADD (+)
-264 = ACTIVE         272 = MUL (*)
-265 = ID             273 = OPEN_BRACE ({)
+258 = IMPORT         266 = INTEGER          274 = CLOSE_BRACE (})
+259 = TEMPO          267 = NOTE             275 = OPEN_BRACKET ([)
+260 = COMPASSES      268 = HIT (x)          276 = CLOSE_BRACKET (])
+261 = STEPS          269 = SILENCE (.)      277 = COMMA (,)
+262 = PATTERN        270 = ADD (+)          278 = RANGE_SEPARATOR (-)
+263 = RHYTHM         271 = MUL (*)
+264 = INSTRUMENTS    272 = OPEN_BRACE ({)
+265 = ACTIVE         273 = STRING_LITERAL
 ```
-
----
-
-## Test Files
-
-Located in `src/test/c/accept/`:
-1. `01-tempo` - Keywords and integers
-2. `02-keywords` - All 7 keywords
-3. `03-identifiers` - Pattern/instrument names
-4. `04-notes` - Musical notes
-5. `05-percussion-symbols` - x and .
-6. `06-melodic-silence` - Melodic rest
-7. `07-pattern-array` - Array notation
-8. `08-operators` - + and *
-9. `09-full-pattern` - Complete pattern
-10. `10-multiline-comment` - Comments
 
 ---
 
 ## Important Notes
 
-### Why Tests Stop Early
+### Pattern Order in FlexPatterns.l
 
-The placeholder grammar only accepts **single tokens**. When you run tests:
+The order of patterns is critical for correct tokenization:
 
-1. Lexer recognizes first token → Parser accepts it
-2. Lexer recognizes second token → Parser fails (expects EOF)
-3. Parsing stops
-
-**This is expected.** The lexer works correctly - the limitation is the placeholder grammar.
-
-Example:
-```
-Input: x . x . x .
-
-Output shows only:
-  HitLexemeAction: "x"
-  IgnoredLexemeAction: " "
-  SilenceLexemeAction: "."
-  [Parser stops here]
+```c
+1. Comments (/* ... */)
+2. Keywords (exact strings: "tempo", "pattern", etc.)
+3. Special symbols (x, .)
+4. Range separator (-)
+5. Notes (specific pattern: [A-G][#b]?[0-9])
+6. Identifiers (general pattern: [a-zA-Z][a-zA-Z0-9_]*)
+7. Integers ([0-9]+)
+8. Operators and delimiters
 ```
 
-The lexer correctly identified all 3 tokens before the parser stopped.
+This order ensures:
+- Keywords match before identifiers
+- `x` matches as HIT before being caught by identifier pattern
+- Notes match before general identifiers
 
-### Memory Leaks (Expected)
+### Range Separator
 
-Small leaks (< 10 bytes) occur because the placeholder grammar stops processing before all tokens are consumed. Will be fixed when implementing the full grammar.
+The `-` character is ONLY used as RANGE_SEPARATOR in active range definitions (e.g., `active 1-4`). It is NOT a rhythm element. For silence in rhythms, use `.` instead.
+
+### Silence
+
+There is only one type of silence: `.` (SILENCE). It is used for both percussion and melodic silence.
 
 ---
 
@@ -143,40 +133,24 @@ Small leaks (< 10 bytes) occur because the placeholder grammar stops processing 
 3. **FlexActions.c** - Token recognition functions
 4. **SemanticValue union** - Added string type
 
-### Key Fix Applied
+### Key Pattern Order Fix
 
-**Pattern precedence issue resolved:**
-- Moved exact patterns (`"x"`, `"."`, `"-"`) BEFORE identifier pattern
+Pattern precedence issue resolved:
+- Moved exact patterns (`"x"`, `"."`) BEFORE identifier pattern
 - Now `x` is recognized as HIT, not as identifier
 - All percussion symbols work correctly
-
-### Pattern Order (FlexPatterns.l)
-```
-1. Comments
-2. Keywords (exact strings)
-3. Special symbols (x, ., -)
-4. Notes (specific pattern)
-5. Identifiers (general pattern)
-6. Integers
-7. Operators and delimiters
-```
-
-This order ensures:
-- Keywords match before identifiers
-- `x` matches as HIT before being caught by identifier pattern
-- Notes match before general identifiers
 
 ---
 
 ## Status
 
-✓ **Lexical Analysis: COMPLETE**
+Lexical Analysis: COMPLETE
 - All 24 token types working
 - Pattern matching correct
 - Semantic values stored
 - Test suite created
 - Build system functional
 
-**Next Phase:** Syntactic Analysis (Parser)
+Next Phase: Syntactic Analysis (Parser)
 
 See `NextSteps.md` for requirements and implementation plan.

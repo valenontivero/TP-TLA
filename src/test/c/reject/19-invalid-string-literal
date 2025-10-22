@@ -1,0 +1,16 @@
+remember "unclosed string
+
+tempo 120
+compasses 4
+steps 4
+
+pattern test {
+    rhythm [x,.,x,.]
+}
+
+instruments {
+    kick {
+        pattern test
+        active 1-4
+    }
+}

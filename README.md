@@ -1,37 +1,100 @@
-[![✗](https://img.shields.io/badge/Release-v2.0.0-ffb600.svg?style=for-the-badge)](https://github.com/agustin-golmar/Flex-Bison-Compiler/releases)
+[![Release](https://img.shields.io/badge/Release-v2.0.0-ffb600.svg?style=for-the-badge)](https://github.com/agustin-golmar/Flex-Bison-Compiler/releases)
 
-[![✗](https://github.com/agustin-golmar/Flex-Bison-Compiler/actions/workflows/pipeline.yaml/badge.svg?branch=production)](https://github.com/agustin-golmar/Flex-Bison-Compiler/actions/workflows/pipeline.yaml)
+[![Pipeline](https://github.com/agustin-golmar/Flex-Bison-Compiler/actions/workflows/pipeline.yaml/badge.svg?branch=production)](https://github.com/agustin-golmar/Flex-Bison-Compiler/actions/workflows/pipeline.yaml)
 
 # Drum Machine DSL Compiler
 
-Compilador completo para un lenguaje específico de dominio (DSL) para creación de ritmos estilo máquina de ritmos.
+A complete compiler for a domain-specific language (DSL) for drum machine rhythm pattern creation.
 
-## 🚀 Quick Start - ¡Prueba que TODO funciona!
+## Quick Start
+
+Run the complete test suite to verify everything works:
 
 ```bash
 ./test-complete.sh
 ```
 
-**Resultado esperado:** `✓ ALL TESTS PASSED! (13/13 tests)`
+Expected result: All 25 tests passing
 
-## 📖 Documentación
+## Documentation
 
-- **[QUICKSTART.md](QUICKSTART.md)** - Guía rápida de uso
-- **[TESTING.md](TESTING.md)** - Guía completa de testing
-- **[PARSER.md](PARSER.md)** - Documentación del parser
-- **[LEXER.md](LEXER.md)** - Documentación del lexer
+- **[QUICKSTART.md](QUICKSTART.md)** - Quick usage guide
+- **[TESTING.md](TESTING.md)** - Complete testing guide
+- **[PARSER.md](PARSER.md)** - Parser documentation
+- **[LEXER.md](LEXER.md)** - Lexer documentation
+- **[CLAUDE.md](CLAUDE.md)** - AI assistant project guide
 
 ---
 
-# Flex-Bison-Compiler
+## Current Status
 
-A base compiler example, developed with Flex and Bison.
+### Lexical Analysis: Complete
 
-* [Requirements](#requirements)
-* [Configuration](#configuration)
-* [Commands](#commands)
-* [CI/CD](#cicd)
-* [Recommended Extensions](#recommended-extensions)
+The lexical analyzer recognizes 24 token types for the Drum Machine DSL.
+
+Test: `./test-lexer.sh`
+
+### Syntactic Analysis: Complete
+
+The parser builds a complete AST for the Drum Machine DSL.
+
+Implemented features:
+- Declarations: tempo, compasses, steps
+- Patterns with rhythm expressions
+- Rhythm arrays: `[x,.,x,.]`
+- Rhythm concatenation: `+`
+- Rhythm repetition: `* N`
+- Instruments with pattern references
+- Active ranges with concatenation: `active 1-4 + 6-8 + 10-16`
+
+Test: `./test-complete.sh`
+
+This script runs 25 comprehensive tests verifying the entire compiler.
+
+### Backend: In Progress
+
+The backend currently generates a text representation of the AST. Audio/MIDI generation is not yet implemented.
+
+---
+
+## Language Example
+
+```
+remember "lib/patterns.dsl"
+
+tempo 120
+compasses 16
+steps 4
+
+pattern kickPattern {
+    rhythm [x,.,x,.] * 4
+}
+
+pattern bassPattern {
+    rhythm [E2,.,A2,.] + [E2,G2,A2,.]
+}
+
+instruments {
+    kick {
+        pattern kickPattern
+        active 1-4 + 6-8 + 10-16
+    }
+    bass {
+        pattern bassPattern
+        active 1-16
+    }
+}
+```
+
+### Key Language Features
+
+- **Universal silence**: `.` for all silence (percussion and melody)
+- **Range separator**: `-` is used only for ranges (e.g., `1-4`), not as a rhythm element
+- **Range concatenation**: Active ranges can be concatenated with `+` (e.g., `active 1-4 + 6-8 + 10-12`)
+- **Musical notes**: Support for notes with accidentals (e.g., `E2`, `A#2`, `Bb3`)
+- **Operators**: Concatenation `+` and repetition `*` for rhythm expressions
+
+---
 
 ## Requirements
 
@@ -39,21 +102,21 @@ A base compiler example, developed with Flex and Bison.
 
 ## Configuration
 
-Set the following environment variables to control and configure the behaviour of the application:
+You could set the following environment variables to control the compiler behavior (it is not necessary though):
 
 | Name                  | Default | Description                                                                                                                                                           |
 | :-------------------- | :-----: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ENVIRONMENT`         | `Local` | The active environment name. The available environments are: `Local`, `Development` and `Production`.                                                                 |
-| `LOG_IGNORED_LEXEMES` | `true`  | When `true`, logs all of the ignored lexemes found with Flex at `DEBUGGING` level. To remove those logs from the console output set it to `false`.                    |
-| `LOGGING_LEVEL`       | `ALL`   | The minimum level to log in the console output. From lower to higher, the available levels are: `ALL`, `DEBUGGING`, `INFORMATION`, `WARNING`, `ERROR` and `CRITICAL`. |
+| `ENVIRONMENT`         | `Local` | The active environment name. Available environments: `Local`, `Development`, `Production`.                                                                            |
+| `LOG_IGNORED_LEXEMES` | `true`  | When `true`, logs all ignored lexemes found with Flex at `DEBUGGING` level. Set to `false` to remove these logs from console output.                                  |
+| `LOGGING_LEVEL`       | `ALL`   | The minimum level to log in console output. From lower to higher: `ALL`, `DEBUGGING`, `INFORMATION`, `WARNING`, `ERROR`, `CRITICAL`.                                 |
 
-_Docker Compose_ can read the variables from an `.env` file too (see `compose.yaml` file).
+Docker Compose can read variables from an `.env` file (see `compose.yaml` file).
 
 ## Commands
 
 ### Start
 
-Rises an ephemeral container, ready to start development:
+Start an ephemeral container for development:
 
 ```bash
 docker compose run --rm compiler
@@ -61,7 +124,7 @@ docker compose run --rm compiler
 
 ### Build
 
-Builds or rebuilds the entire compiler:
+Build or rebuild the entire compiler:
 
 ```bash
 src/main/bash/build.sh
@@ -69,17 +132,17 @@ src/main/bash/build.sh
 
 ### Run
 
-Compiles a program:
+Compile a program:
 
 ```bash
 src/main/bash/run.sh <program>
 ```
 
-where `<program>` is the path to the file that represents its entry-point.
+where `<program>` is the path to the file representing the program entry-point.
 
 ### Test
 
-Executes every available unit-test under `src/test/c` folder:
+Execute all available unit tests under `src/test/c` folder:
 
 ```bash
 src/main/bash/test.sh
@@ -87,7 +150,7 @@ src/main/bash/test.sh
 
 ### Stop
 
-Logout, destroy the ephemeral containers and shutdowns the cluster:
+Logout, destroy ephemeral containers and shutdown the cluster:
 
 ```bash
 exit
@@ -100,93 +163,13 @@ docker compose down
 | :-------------------------------------- | :------------------------------------------------------ |
 | `docker builder prune --all`            | Removes all builds and complete build cache.            |
 | `docker compose --progress=plain build` | Forces a build or rebuild of the images in the cluster. |
-| `docker image prune`                    | Removes all of the dangling images from Docker.         |
+| `docker image prune`                    | Removes all dangling images from Docker.                |
 | `docker network prune`                  | Removes unused networks from Docker.                    |
 | `docker volume prune`                   | Removes unused volumes from Docker.                     |
 
-## CI/CD
-
-To trigger an automatic integration on every push or PR (_Pull Request_), you must activate _GitHub Actions_ in the _Settings_ tab. Use the following configuration:
-
-| Key                                                        | Value                                               |
-| :--------------------------------------------------------- | :-------------------------------------------------- |
-| `Actions permissions`                                      | `Allow all actions and reusable workflows`          |
-| `Allow GitHub Actions to create and approve pull requests` | `false`                                             |
-| `Artifact and log retention`                               | `30 days`                                           |
-| `Fork pull request workflows from outside collaborators`   | `Require approval for all outside collaborators`    |
-| `Workflow permissions`                                     | `Read repository contents and packages permissions` |
 
 ## Recommended Extensions
 
 * [C/C++](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools)
 * [CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools)
 * [Yash](https://marketplace.visualstudio.com/items?itemName=daohong-emilio.yash)
-
-
----
-
-# Drum Machine DSL - Estado Actual
-
-## ✓ Análisis Léxico: Completo
-
-El analizador léxico reconoce los 24 tipos de tokens para el lenguaje de la máquina de ritmo.
-
-**Prueba Rápida:**
-```bash
-./test-lexer.sh
-```
-
-## ✓ Análisis Sintáctico: Completo
-
-El parser (analizador sintáctico) construye el AST completo del lenguaje Drum Machine DSL.
-
-**Características implementadas:**
-- Declaraciones: tempo, compasses, steps
-- Patrones con expresiones rítmicas
-- Arrays de ritmo: `[x,.,x,.]`
-- Concatenación de ritmos: `+`
-- Repetición de ritmos: `* N`
-- Instrumentos con referencias a patrones
-- Rangos activos: `active 1-16`
-
-**Prueba Completa (RECOMENDADO):**
-```bash
-./test-complete.sh
-```
-Este script ejecuta 13 tests comprehensivos que verifican todo el compilador.
-
-**Documentación:**
-- **TESTING.md** - Guía completa de testing (¡LEE ESTO!)
-- **PARSER.md** - Documentación del parser
-- **LEXER.md** - Documentación del lexer
-- **NextSteps.md** - Requisitos del proyecto
-
-**Siguiente Fase:** Backend - Generación de audio
-
----
-
-# TP-TLA
-
-### Ejemplo a priori del lenguaje  
-```
-tempo{124};
-compases{4};
-steps{1};
-instruments{
-  kick{
-    rithm{4 * [x,-,x,-]};
-    duration{1};
-  }
-  bass{
-    rithm{ [E2,G2,A2, -] + [E2,G2,A#2,A2] + [E2,G2,A2, -] + [-, G2, E2, -] };
-    duration{1};
-  }
-}
-```  
-  
-tempo: la velocidad general a la que sucederá el ritmo.  
-compases: la cantidad de compases que se loopearán en total.  
-steps: cantidad de golpes utilizables por cada pulso (beat).  
-instruments: aquí se listan los instrumentos que aparecerán dentro del ritmo.  
-rythm: es el patrón de notas (o golpes) que seguirá el instrumento. En este caso el kick es 4 veces golpes en el primer y tercer pulso de cada compás.  
-duration: es la cantidad de "steps" que se mantiene cada símbolo del "rythm".  

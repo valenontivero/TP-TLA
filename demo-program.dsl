@@ -15,7 +15,7 @@ pattern hihatPattern {
 }
 
 pattern bassPattern {
-    rhythm [E2,G2,A2,.] + [E2,G2,A#2,A2] + [E2,G2,A2,.] + [G2,E2,-,-]
+    rhythm [E2,G2,A2,.] + [E2,G2,A#2,A2] + [E2,G2,A2,.] + [G2,E2,.,.]
 }
 
 instruments {
