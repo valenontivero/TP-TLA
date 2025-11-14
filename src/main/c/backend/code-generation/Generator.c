@@ -1,4 +1,5 @@
 #include "Generator.h"
+#include "MidiGenerator.h"
 
 /* MODULE INTERNAL STATE */
 
@@ -147,6 +148,20 @@ static void _output(const unsigned int indentationLevel, const char * const form
 
 void executeGenerator(CompilerState * compilerState) {
 	logDebugging(_logger, "Generating final output...");
+
+	// Generate text output (summary)
 	_generateProgram(compilerState->abstractSyntaxtTree);
+
+	// Generate MIDI file
+	Program * program = compilerState->abstractSyntaxtTree;
+	if (program != NULL) {
+		CompilationStatus status = generateMidiFile(program, "output.mid");
+		if (status == SUCCEEDED) {
+			printf("\n✓ MIDI file generated: output.mid\n");
+		} else {
+			printf("\n✗ MIDI generation failed\n");
+		}
+	}
+
 	logDebugging(_logger, "Generation is done.");
 }

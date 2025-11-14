@@ -1,5 +1,9 @@
 #include "backend/code-generation/Generator.h"
+#include "backend/code-generation/MidiGenerator.h"
 #include "backend/domain-specific/Calculator.h"
+#include "backend/semantic-analysis/SemanticAnalyzer.h"
+#include "backend/semantic-analysis/SymbolTable.h"
+#include "backend/semantic-analysis/TypeChecker.h"
 #include "frontend/Frontend.h"
 #include "frontend/ImportResolver.h"
 #include "frontend/lexical-analysis/FlexActions.h"
@@ -30,6 +34,10 @@ const int main(const int length, const char ** arguments) {
 		initializeBisonActionsModule(&compilerState),
 		initializeFrontendModule(lexicalAnalyzer),
 		initializeImportResolverModule(),
+		initializeSymbolTableModule(),
+		initializeTypeCheckerModule(),
+		initializeSemanticAnalyzerModule(),
+		initializeMidiGeneratorModule(),
 		initializeCalculatorModule(),
 		initializeGeneratorModule()
 	};
@@ -43,11 +51,22 @@ const int main(const int length, const char ** arguments) {
 		// ----------------------------------------------------------------------------------------
 		if (compilationStatus == SUCCEEDED) {
 			// ------------------------------------------------------------------------------------
-			// Beginning of the Backend... --------------------------------------------------------
-			logDebugging(logger, "Generating output...");
-			executeGenerator(&compilerState);
-			// ...end of the Backend. -------------------------------------------------------------
+			// Semantic Analysis Phase ------------------------------------------------------------
+			logDebugging(logger, "Performing semantic analysis...");
+			compilationStatus = analyzeProgram(program);
 			// ------------------------------------------------------------------------------------
+			if (compilationStatus == SUCCEEDED) {
+				// --------------------------------------------------------------------------------
+				// Beginning of the Backend... ----------------------------------------------------
+				logDebugging(logger, "Generating output...");
+				executeGenerator(&compilerState);
+				// ...end of the Backend. ---------------------------------------------------------
+				// --------------------------------------------------------------------------------
+			}
+			else {
+				logError(logger, "The semantic-analysis phase rejects the input program.");
+				compilationStatus = FAILED;
+			}
 		}
 	}
 	else {

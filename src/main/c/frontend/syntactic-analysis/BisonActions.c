@@ -122,10 +122,23 @@ RhythmArray * RhythmArraySemanticAction(RhythmElementList * elements) {
 
 RhythmElementList * RhythmElementListSemanticAction(RhythmElement * element, RhythmElementList * next) {
 	_logSyntacticAnalyzerAction(__FUNCTION__);
-	RhythmElementList * list = calloc(1, sizeof(RhythmElementList));
-	list->element = element;
-	list->next = next;
-	return list;
+	RhythmElementList * newNode = calloc(1, sizeof(RhythmElementList));
+	newNode->element = element;
+	newNode->next = NULL;
+
+	// If next is NULL, this is the first element
+	if (next == NULL) {
+		return newNode;
+	}
+
+	// Otherwise, append to the END of the list to maintain order
+	RhythmElementList * current = next;
+	while (current->next != NULL) {
+		current = current->next;
+	}
+	current->next = newNode;
+
+	return next;
 }
 
 RhythmElement * HitElementSemanticAction() {
