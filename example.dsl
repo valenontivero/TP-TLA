@@ -1,5 +1,5 @@
 tempo 115
-compasses 4
+compasses 16
 steps 4
 
 pattern kickPattern {
@@ -13,10 +13,10 @@ pattern bassPattern {
 instruments {
     kick {
         pattern kickPattern
-        active 1-4
+        active 1-16
     }
     bass {
         pattern bassPattern
-        active 1-4
+        active 1-16
     }
 }

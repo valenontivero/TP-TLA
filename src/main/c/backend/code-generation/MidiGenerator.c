@@ -380,7 +380,8 @@ static long _generateInstrumentTrack(Program * program, Instrument * instrument,
 	// Calculate timing
 	int steps = program->declarations->steps;
 	int compasses = program->declarations->compasses;
-	int ticksPerStep = MIDI_TICKS_PER_QUARTER_NOTE / steps;
+	// Each step = 1 quarter note (since time signature is steps/4)
+	int ticksPerStep = MIDI_TICKS_PER_QUARTER_NOTE;
 
 	// Determine channel and note
 	uint8_t channel = MIDI_PERCUSSION_CHANNEL;
@@ -392,19 +393,41 @@ static long _generateInstrumentTrack(Program * program, Instrument * instrument,
 		channel = MIDI_MELODIC_CHANNEL;
 	}
 
+	// Calculate how many compasses the expanded rhythm spans
+	// Each compass should have 'steps' number of elements
+	int totalRhythmCompasses = (rhythm->count + steps - 1) / steps;  // Ceiling division
+
+	logDebugging(_logger, "Rhythm spans %d compasses (%d elements / %d steps)",
+		totalRhythmCompasses, rhythm->count, steps);
+
 	// Generate events for each compass
 	uint32_t currentTick = 0;
 	uint32_t lastEventTick = 0;
+	int rhythmElementIndex = 0;  // Track position in the expanded rhythm
 
 	for (int compass = 1; compass <= compasses; compass++) {
 		if (!_isCompassActive(compass, instrument->activeRange)) {
-			// Skip inactive compass
-			currentTick += rhythm->count * ticksPerStep;
+			// Skip inactive compass - just advance time
+			currentTick += steps * ticksPerStep;
 			continue;
 		}
 
-		// Generate events for this compass
-		for (int i = 0; i < rhythm->count; i++) {
+		// Calculate which slice of the rhythm to play in this compass
+		// The rhythm repeats/cycles through the compasses
+		int rhythmCompassIndex = (compass - 1) % totalRhythmCompasses;
+		int startElementIndex = rhythmCompassIndex * steps;
+		int endElementIndex = startElementIndex + steps;
+
+		// Make sure we don't go past the end of the rhythm
+		if (endElementIndex > rhythm->count) {
+			endElementIndex = rhythm->count;
+		}
+
+		logDebugging(_logger, "Compass %d: playing rhythm elements %d-%d (currentTick=%u)",
+			compass, startElementIndex, endElementIndex - 1, currentTick);
+
+		// Generate events for this compass (steps elements)
+		for (int i = startElementIndex; i < endElementIndex; i++) {
 			ExpandedElement * element = &rhythm->elements[i];
 
 			if (element->type == ELEMENT_SILENCE) {
@@ -431,6 +454,13 @@ static long _generateInstrumentTrack(Program * program, Instrument * instrument,
 			lastEventTick = noteOffTick;
 
 			currentTick = noteOffTick;
+		}
+
+		// Pad the rest of the compass with silence if needed
+		int elementsPlayed = endElementIndex - startElementIndex;
+		if (elementsPlayed < steps) {
+			int silenceTicks = (steps - elementsPlayed) * ticksPerStep;
+			currentTick += silenceTicks;
 		}
 	}
 
