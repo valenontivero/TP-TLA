@@ -218,16 +218,15 @@ CompilationStatus analyzeProgram(Program * program) {
 
 	logInformation(_logger, "Starting semantic analysis...");
 
-	// Step 1: Validate declarations
+	// Step 1: Validate declarations (if present)
 	logInformation(_logger, "Step 1: Validating declarations...");
-	if (program->declarations == NULL) {
-		logError(_logger, "Program has NULL declarations");
-		return FAILED;
-	}
-
-	if (!validateDeclarations(program->declarations)) {
-		logError(_logger, "Invalid declarations");
-		return FAILED;
+	if (program->declarations != NULL) {
+		if (!validateDeclarations(program->declarations)) {
+			logError(_logger, "Invalid declarations");
+			return FAILED;
+		}
+	} else {
+		logDebugging(_logger, "No declarations (pattern library or partial program)");
 	}
 
 	// Step 2: Build symbol table

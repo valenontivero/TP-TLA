@@ -152,15 +152,17 @@ void executeGenerator(CompilerState * compilerState) {
 	// Generate text output (summary)
 	_generateProgram(compilerState->abstractSyntaxtTree);
 
-	// Generate MIDI file
+	// Generate MIDI file (only if we have declarations and instruments)
 	Program * program = compilerState->abstractSyntaxtTree;
-	if (program != NULL) {
+	if (program != NULL && program->declarations != NULL && program->instruments != NULL) {
 		CompilationStatus status = generateMidiFile(program, "output.mid");
 		if (status == SUCCEEDED) {
 			printf("\n✓ MIDI file generated: output.mid\n");
 		} else {
 			printf("\n✗ MIDI generation failed\n");
 		}
+	} else {
+		logDebugging(_logger, "Skipping MIDI generation (pattern library or incomplete program)");
 	}
 
 	logDebugging(_logger, "Generation is done.");
