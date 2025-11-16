@@ -24,7 +24,10 @@ void _shutdownFlexActionsModule() {
 ModuleDestructor initializeFlexActionsModule(LexicalAnalyzer * lexicalAnalyzer) {
 	_inputBuffer = NULL;
 	_lexicalAnalyzer = lexicalAnalyzer;
-	_logger = createLogger("FlexActions");
+	// Only create logger if it doesn't exist (to avoid memory leaks during imports)
+	if (_logger == NULL) {
+		_logger = createLogger("FlexActions");
+	}
 	_logIgnoredLexemes = getBooleanOrDefault("LOG_IGNORED_LEXEMES", _logIgnoredLexemes);
 	return _shutdownFlexActionsModule;
 }

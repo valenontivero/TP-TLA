@@ -17,7 +17,10 @@ void _shutdownBisonActionsModule() {
 
 ModuleDestructor initializeBisonActionsModule(CompilerState * compilerState) {
 	_compilerState = compilerState;
-	_logger = createLogger("BisonActions");
+	// Only create logger if it doesn't exist (to avoid memory leaks during imports)
+	if (_logger == NULL) {
+		_logger = createLogger("BisonActions");
+	}
 	return _shutdownBisonActionsModule;
 }
 
@@ -35,6 +38,15 @@ static void _logSyntacticAnalyzerAction(const char * functionName) {
 }
 
 /* PUBLIC FUNCTIONS */
+
+// Getter and setter for compiler state (needed for import resolution)
+CompilerState * getBisonActionsCompilerState() {
+	return _compilerState;
+}
+
+void setBisonActionsCompilerState(CompilerState * state) {
+	_compilerState = state;
+}
 
 Program * ProgramSemanticAction(ImportList * imports, Declarations * declarations, PatternList * patterns, InstrumentList * instruments) {
 	_logSyntacticAnalyzerAction(__FUNCTION__);

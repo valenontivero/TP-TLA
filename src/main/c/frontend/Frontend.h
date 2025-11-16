@@ -18,6 +18,11 @@
 ModuleDestructor initializeFrontendModule(LexicalAnalyzer * lexicalAnalyzer);
 
 /**
+ * Gets the current lexical analyzer.
+ */
+LexicalAnalyzer * getLexicalAnalyzer();
+
+/**
  * Creates a new input buffer for the scanner.
  *
  * @see https://westes.github.io/flex/manual/Multiple-Input-Buffers.html

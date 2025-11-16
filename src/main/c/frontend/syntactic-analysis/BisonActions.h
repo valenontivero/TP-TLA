@@ -13,6 +13,12 @@
 ModuleDestructor initializeBisonActionsModule(CompilerState * compilerState);
 
 /**
+ * Getter and setter for compiler state (used by import resolution).
+ */
+CompilerState * getBisonActionsCompilerState();
+void setBisonActionsCompilerState(CompilerState * state);
+
+/**
  * Bison semantic actions for Drum Machine DSL.
  */
 

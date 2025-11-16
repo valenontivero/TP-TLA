@@ -47,6 +47,10 @@ static const char * _compilationStatusAsString(const CompilationStatus compilati
 
 /* PUBLIC FUNCTIONS */
 
+LexicalAnalyzer * getLexicalAnalyzer() {
+	return _lexicalAnalyzer;
+}
+
 InputBuffer * createInputBuffer(LexicalAnalyzer * lexicalAnalyzer, const char * path) {
 	InputBuffer * inputBuffer = (InputBuffer *) calloc(1, sizeof(InputBuffer));
 	inputBuffer->bufferSizeInBytes = YY_BUF_SIZE;
