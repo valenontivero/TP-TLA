@@ -13,7 +13,7 @@ pattern custom {
 instruments {
     bass {
         pattern custom
-        active 5-8 + 13-16
+        active 5-8
     }
     snare {
         pattern snarePattern
