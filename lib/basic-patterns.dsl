@@ -3,5 +3,17 @@ pattern kickPattern {
 }
 
 pattern bassPattern {
-    rhythm [E2,G2,A2,Y] + [E2,G2,A#2,A2]
+    rhythm [E2,G2,A2,.] + [E2,G2,A#2,A2]
+}
+
+pattern basicKick {
+    rhythm [x,.,.,.]
+}
+
+pattern basicSnare {
+    rhythm [.,.,x,.]
+}
+
+pattern basicHihat {
+    rhythm [x,x,x,x]
 }

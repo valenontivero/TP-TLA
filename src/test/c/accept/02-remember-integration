@@ -1,4 +1,4 @@
-remember "src/test/c/accept/patterns-library.dsl"
+remember "lib/basic-patterns.dsl"
 
 tempo 120
 compasses 8

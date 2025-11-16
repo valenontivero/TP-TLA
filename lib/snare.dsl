@@ -1,0 +1,3 @@
+pattern snarePattern {
+    rhythm [.,.,x,.]
+}

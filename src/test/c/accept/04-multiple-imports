@@ -11,8 +11,13 @@ pattern custom {
 }
 
 instruments {
-    custom_inst {
+    bass {
         pattern custom
+        active 1-16
+    }
+    // Comment
+    snare {
+        pattern snarePattern
         active 1-16
     }
 }
