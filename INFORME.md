@@ -1,9 +1,8 @@
 # Informe Técnico: Compilador DSL para Máquina de Ritmos
 
-**Autores:** Martín Vella
-**Institución:** [Institución/Universidad]
+**Autores:**  Pablo Germano, Federico Kloberdanz, Valentin Ontivero, Mauro Vella
+**Institución:** ITBA
 **Fecha:** Noviembre 2024
-**Versión del Compilador:** 2.0.0
 
 ---
 
@@ -50,7 +49,7 @@ El compilador implementa:
 - Análisis semántico con tabla de símbolos y verificación de tipos
 - Generación de código MIDI binario (Format 1, multi-track)
 - Sistema de importación recursiva con detección de dependencias circulares
-- 33 casos de prueba (16 aceptación + 18 rechazo) con 100% de éxito
+- 34 casos de prueba (16 aceptación + 18 rechazo) con 100% de éxito
 
 Este documento detalla la arquitectura del compilador, las decisiones de diseño fundamentales, los desafíos encontrados durante la implementación, y las lecciones aprendidas en el proceso de construcción de un compilador de propósito específico desde cero.
 
@@ -277,23 +276,23 @@ remember "lib/snare.dsl"
 remember "lib/hihat.dsl"
 
 /* === SECCIÓN 2: DECLARACIONES GLOBALES === */
-tempo 140              // Velocidad: 140 pulsaciones por minuto
-compasses 16           // Estructura: 16 compases
-steps 8                // Resolución: 8 pasos por compás (corcheas)
+tempo 140              /* Velocidad: 140 pulsaciones por minuto */
+compasses 16           /* Estructura: 16 compases */
+steps 8                /* Resolución: 8 pasos por compás (corcheas) */
 
 /* === SECCIÓN 3: DEFINICIÓN DE PATRONES === */
 pattern kickPattern {
-    // Patrón de bombo: golpe en tiempos 1 y 5 (síncopa)
+    /* Patrón de bombo: golpe en tiempos 1 y 5 (síncopa) */
     rhythm [x,.,.,.,x,.,.,.]
 }
 
 pattern snarePattern {
-    // Patrón de caja: golpe en tiempos 3 y 7 (backbeat)
+    /* Patrón de caja: golpe en tiempos 3 y 7 (backbeat) */
     rhythm [.,.,x,.,.,.,x,.]
 }
 
 pattern hihatPattern {
-    // Patrón de hi-hat: corcheas constantes
+    /* Patrón de hi-hat: corcheas constantes */
     rhythm [x,x,x,x,x,x,x,x]
 }
 
@@ -417,115 +416,10 @@ El análisis léxico se implementa usando **Flex 2.6.4** en modo PUSH (caracter�
 | **Especiales** | Comment | (ignorado) | `/* ... */` |
 | | Whitespace | (ignorado) | espacios, tabs, newlines |
 
-##### Orden Crítico de Patrones
+##### Orden de patrones y modo PUSH
 
-El orden de las reglas en `FlexPatterns.l` es **absolutamente crítico** para la correcta tokenización. Flex aplica la regla de **mayor coincidencia primero**, y en caso de empate, la **primera regla en aparecer**.
-
-**Orden correcto:**
-
-```c
-/* 1. Comentarios (mayor prioridad para evitar conflictos) */
-"/*"([^*]|"*"[^/])*"*/"   { /* ignorar */ }
-
-/* 2. Palabras clave (antes que identificadores) */
-"remember"                { return pushToken(REMEMBER); }
-"tempo"                   { return pushToken(TEMPO); }
-"pattern"                 { return pushToken(PATTERN); }
-// ... resto de keywords
-
-/* 3. Elementos rítmicos exactos (antes de patrones generales) */
-"x"                       { return pushToken(HIT); }
-"."                       { return pushToken(SILENCE); }
-
-/* 4. Separador de rangos (tiene significado especial) */
-"-"                       { return pushToken(RANGE_SEPARATOR); }
-
-/* 5. Notas musicales (patrón específico) */
-{note_letter}{accidental}?{digit}  {
-    return pushToken(NOTE, yytext);
-}
-
-/* 6. Identificadores (patrón GENERAL - debe ir ÚLTIMO) */
-{letter}({letter}|{digit}|"_")*   {
-    return pushToken(ID, yytext);
-}
-
-/* 7. Enteros */
-[0-9]+                    { return pushToken(INTEGER, atoi(yytext)); }
-
-/* 8. Operadores y delimitadores */
-"+"                       { return pushToken(ADD); }
-"*"                       { return pushToken(MUL); }
-// ... resto de delimitadores
-```
-
-**Justificación del orden:**
-
-1. **Comentarios primero**: Evitan que `/*` sea interpretado como operador.
-
-2. **Keywords antes de ID**: Si `"tempo"` apareciera después de `{letter}+`, sería reconocido como identificador genérico en lugar de palabra clave.
-
-3. **Strings exactos (`x`, `.`) antes de patrones**: Si el patrón `{letter}+` apareciera antes, `x` sería reconocido como identificador, no como HIT.
-
-4. **Notas antes de ID**: El patrón `E2` coincide tanto con `NOTE` como con `ID`. Colocando `NOTE` primero, se prioriza correctamente.
-
-5. **ID al final**: Como patrón más general, debe aparecer después de todos los patrones más específicos.
-
-##### Modo PUSH: Arquitectura Avanzada
-
-En Flex tradicional (modo PULL), el lexer retorna códigos de token directamente:
-
-```c
-// Modo PULL (tradicional)
-"tempo"  { return TEMPO; }  // Retorna código de token
-```
-
-En modo PUSH (v2.0.0), el lexer *empuja* tokens a una cola interna del parser y retorna un estado de compilación:
-
-```c
-// Modo PUSH (v2.0.0)
-"tempo"  { return pushToken(TEMPO); }  // Retorna CompilationStatus
-```
-
-**Ventajas del modo PUSH:**
-- Permite que una regla léxica genere 0 o múltiples tokens (útil para preprocesamiento)
-- Desacopla el lexer del parser
-- Facilita manejo de errores asíncronos
-
-**Implementación de `pushToken()`**:
-
-```c
-CompilationStatus pushToken(const Token token, ...) {
-    // Validar token
-    if (!isValidToken(token)) {
-        logError(_logger, "Invalid token: %d", token);
-        return FAILED;
-    }
-
-    // Crear estructura de token
-    TokenData data;
-    data.token = token;
-
-    // Extraer valor según tipo (usando va_list para argumentos variables)
-    va_list args;
-    va_start(args, token);
-    if (token == INTEGER) {
-        data.integer = va_arg(args, int);
-    } else if (token == NOTE || token == ID || token == STRING_LITERAL) {
-        const char* str = va_arg(args, const char*);
-        data.string = strdup(str);  // CRÍTICO: copiar string
-    }
-    va_end(args);
-
-    // Empujar a parser
-    yylex_push_token(token, &data);
-
-    logDebugging(_logger, "Token pushed: %s", getTokenName(token));
-    return SUCCEEDED;
-}
-```
-
-**Nota crítica sobre memoria**: Todos los strings (`yytext`) deben copiarse con `strdup()` porque el buffer interno de Flex se sobrescribe. Estos strings se liberan posteriormente en los destructores del AST.
+El orden de las reglas en `FlexPatterns.l` es **crítico** para la correcta tokenización: primero se ubican comentarios, luego palabras clave, luego los tokens más específicos (`x`, `.`, notas) y al final el patrón de identificador general.  
+El lexer opera en modo **PUSH**: cada regla crea un `Token` con su valor semántico (entero o string) y lo envía explícitamente al parser, lo que permite desacoplar el ciclo Flex/Bison y manejar mejor errores y logs.
 
 #### 3.1.2. Análisis Sintáctico (Parser)
 
@@ -542,144 +436,80 @@ El análisis sintáctico se implementa usando **GNU Bison 3.8.2** con un parser 
 
 ##### Estructura del AST
 
-El AST utiliza una jerarquía de estructuras con unions para eficiencia de memoria:
+El AST implementa una arquitectura de **nodos de datos + wrappers de lista**:
 
-```c
-// Nodo raíz del programa
-typedef struct Program {
-    ImportList* imports;           // Lista enlazada de imports
-    Declarations* declarations;    // Tempo, compasses, steps
-    PatternList* patterns;         // Lista enlazada de patrones
-    InstrumentList* instruments;   // Lista enlazada de instrumentos
-} Program;
-
-// Expresión rítmica (union para eficiencia)
-typedef struct RhythmExpression {
-    RhythmExpressionType type;  // ARRAY, CONCATENATION, REPETITION
-    union {
-        struct {
-            RhythmElementList* elements;
-        } array;
-
-        struct {
-            struct RhythmExpression* left;
-            struct RhythmExpression* right;
-        } concatenation;
-
-        struct {
-            RhythmElementList* array;
-            int repetitions;
-        } repetition;
-    };
-} RhythmExpression;
-
-// Elemento rítmico individual
-typedef struct RhythmElement {
-    RhythmElementType type;     // HIT, SILENCE, NOTE
-    char* noteValue;            // Solo para type == NOTE (ej. "E2")
-    struct RhythmElement* next; // Lista enlazada
-} RhythmElement;
-
-// Definición de patrón
-typedef struct Pattern {
-    char* name;                 // Identificador único
-    RhythmExpression* rhythm;   // Expresión rítmica
-    struct Pattern* next;       // Lista enlazada
-} Pattern;
-
-// Definición de instrumento
-typedef struct Instrument {
-    char* name;                 // Identificador único
-    char* patternName;          // Referencia al patrón
-    ActiveRangeList* activeRanges;  // Rangos activos
-    struct Instrument* next;    // Lista enlazada
-} Instrument;
-
-// Rango activo (soporta concatenación con +)
-typedef struct ActiveRange {
-    int start;                  // Compás inicial (1-indexed)
-    int end;                    // Compás final (inclusivo)
-    struct ActiveRange* next;   // Lista enlazada para concatenación
-} ActiveRange;
-```
-
-**Decisiones de diseño:**
-
-1. **Listas enlazadas**: Simples de construir durante el parsing (LALR procesa de izquierda a derecha). Alternativamente, podrían usarse arrays dinámicos.
-
-2. **Unions para RhythmExpression**: Ahorra memoria al permitir que un nodo sea array, concatenación, o repetición sin desperdiciar espacio.
-
-3. **Strings copiados**: Todos los identificadores (`name`, `patternName`, `noteValue`) se copian con `strdup()` para evitar referencias a buffers temporales.
-
-4. **Next pointers**: Facilitan recorrido y destrucción recursiva.
+- `Program` agrupa `imports`, `declarations`, `patterns` e `instruments`.
+- Los nodos de datos (`Pattern`, `Instrument`, `RhythmElement`, `ActiveRange`) no contienen `next`.
+- Las listas se representan con wrappers (`PatternList`, `InstrumentList`, `RhythmElementList`) que sí tienen `next`, lo que simplifica el recorrido y la destrucción recursiva.
 
 ##### Acciones Semánticas
 
 Cada producción gramatical tiene una acción semántica asociada que construye el nodo AST correspondiente:
 
 ```c
-// Ejemplo: Construcción de patrón
-// Producción: pattern_def: PATTERN ID OPEN_BRACE RHYTHM rhythm_expr CLOSE_BRACE
-Pattern * PatternSemanticAction(const char * name, RhythmExpression * rhythm) {
-    logDebugging(_logger, "PatternSemanticAction(%s)", name);
+/* Ejemplo: Construcción de patrón
+ * Producción: pattern_def: PATTERN ID OPEN_BRACE RHYTHM rhythm_expr CLOSE_BRACE
+ */
+Pattern * PatternSemanticAction(char * name, RhythmExpression * rhythm) {
+    _logSyntacticAnalyzerAction(__FUNCTION__);
 
-    // Allocar nodo (calloc inicializa a 0)
-    Pattern * pattern = (Pattern *) calloc(1, sizeof(Pattern));
+    Pattern *pattern = calloc(1, sizeof(Pattern));
     if (pattern == NULL) {
         logError(_logger, "Memory allocation failed for Pattern");
         return NULL;
     }
 
-    // Copiar nombre (CRÍTICO: strdup)
-    pattern->name = strdup(name);
-    if (pattern->name == NULL) {
-        free(pattern);
-        return NULL;
-    }
-
+    pattern->name = name;      /* El string ya viene alocado desde el lexer */
     pattern->rhythm = rhythm;
-    pattern->next = NULL;
-
     return pattern;
 }
 
-// Ejemplo: Construcción de lista de elementos rítmicos
-// Producción: rhythm_element_list: rhythm_element_list COMMA rhythm_element
-RhythmElementList * RhythmElementListSemanticAction(
-    RhythmElementList * list,
-    RhythmElement * element
-) {
-    if (list == NULL) {
-        // Caso base: primer elemento
-        return element;
+/* Ejemplo: Construcción de lista de elementos rítmicos
+ * Producción:
+ *   rhythm_element_list : rhythm_element
+ *                        | rhythm_element_list COMMA rhythm_element
+ */
+RhythmElementList * RhythmElementListSemanticAction(RhythmElement * element,
+                                                    RhythmElementList * next) {
+    _logSyntacticAnalyzerAction(__FUNCTION__);
+
+    RhythmElementList *newNode = calloc(1, sizeof(RhythmElementList));
+    if (newNode == NULL) {
+        logError(_logger, "Memory allocation failed for RhythmElementList");
+        return next;
+    }
+    newNode->element = element;
+    newNode->next = NULL;
+
+    /* Caso base: primer elemento de la lista */
+    if (next == NULL) {
+        return newNode;
     }
 
-    // CRÍTICO: Append al FINAL (no prepend)
-    // Si prepending → orden inverso → melodía al revés (Bug #1)
-    RhythmElement * current = list;
+    /* CRÍTICO: appendar al FINAL para preservar el orden de la melodía */
+    RhythmElementList *current = next;
     while (current->next != NULL) {
         current = current->next;
     }
-    current->next = element;
-
-    return list;
+    current->next = newNode;
+    return next;
 }
 
-// Ejemplo: Operador de repetición
-// Producción: rhythm_expr: rhythm_array MUL INTEGER
-RhythmExpression * RepetitionSemanticAction(
-    RhythmElementList * array,
-    int repetitions
-) {
-    logDebugging(_logger, "RepetitionSemanticAction(repetitions=%d)", repetitions);
+/* Ejemplo: Operador de repetición
+ * Producción: rhythm_expr: rhythm_array MUL INTEGER
+ */
+RhythmExpression * RhythmRepetitionSemanticAction(RhythmArray * array, int repetitions) {
+    _logSyntacticAnalyzerAction(__FUNCTION__);
 
-    RhythmExpression * expr = (RhythmExpression *) calloc(1, sizeof(RhythmExpression));
-    if (expr == NULL) return NULL;
+    RhythmExpression *expr = calloc(1, sizeof(RhythmExpression));
+    if (expr == NULL) {
+        logError(_logger, "Memory allocation failed for RhythmExpression");
+        return NULL;
+    }
 
-    expr->type = REPETITION;
+    expr->type = RHYTHM_REPETITION;
     expr->repetition.array = array;
     expr->repetition.repetitions = repetitions;
-
     return expr;
 }
 ```
@@ -755,30 +585,39 @@ El análisis semántico valida que el programa es correcto según las reglas del
 
 La tabla de símbolos es la "base de datos" del compilador, almacenando información sobre todos los patrones e instrumentos declarados.
 
-**Implementación**: Hash table con 64 buckets usando el algoritmo de hash **djb2**:
+**Implementación**: hash table dinámica usando el algoritmo de hash **djb2**.  
+Las estructuras reales son:
 
 ```c
-#define SYMBOL_TABLE_SIZE 64
+typedef enum {
+    SYMBOL_PATTERN,
+    SYMBOL_INSTRUMENT
+} SymbolType;
+
+typedef struct Symbol {
+    char * name;
+    SymbolType type;
+    union {
+        Pattern   * pattern;     /* Para SYMBOL_PATTERN    */
+        Instrument * instrument; /* Para SYMBOL_INSTRUMENT */
+    } data;
+    struct Symbol * next;        /* Chaining por colisiones */
+} Symbol;
 
 typedef struct SymbolTable {
-    SymbolEntry* buckets[SYMBOL_TABLE_SIZE];
+    Symbol ** buckets;  /* Array dinámico de buckets */
+    int capacity;       /* Cantidad de buckets       */
+    int size;           /* Símbolos almacenados      */
 } SymbolTable;
 
-typedef struct SymbolEntry {
-    char* name;              // Identificador
-    SymbolType type;         // PATTERN o INSTRUMENT
-    void* data;              // Puntero al nodo AST correspondiente
-    struct SymbolEntry* next;  // Chaining para colisiones
-} SymbolEntry;
-
-// Hash function: djb2 algorithm
-unsigned int _hash(const char* str) {
-    unsigned int hash = 5381;
+/* Hash function: djb2 (mismo algoritmo que en la cátedra) */
+static unsigned int _hash(const char * str, int capacity) {
+    unsigned long hash = 5381;
     int c;
     while ((c = *str++)) {
-        hash = ((hash << 5) + hash) + c;  // hash * 33 + c
+        hash = ((hash << 5) + hash) + c;  /* hash * 33 + c */
     }
-    return hash % SYMBOL_TABLE_SIZE;
+    return hash % capacity;
 }
 ```
 
@@ -786,44 +625,76 @@ unsigned int _hash(const char* str) {
 
 1. **Create** (Inserción):
 ```c
-CompilationStatus insertPattern(SymbolTable* table, const char* name, Pattern* pattern) {
-    // Verificar duplicados
+SymbolTable * createSymbolTable(int capacity) {
+    SymbolTable * table = calloc(1, sizeof(SymbolTable));
+    if (table == NULL) return NULL;
+
+    table->capacity = capacity;
+    table->size     = 0;
+    table->buckets  = calloc(capacity, sizeof(Symbol *));
+    if (table->buckets == NULL) {
+        free(table);
+        return NULL;
+    }
+    return table;
+}
+
+static bool _insertSymbol(SymbolTable * table,
+                          const char * name,
+                          SymbolType type,
+                          void * data) {
     if (symbolExists(table, name)) {
-        logError(_logger, "Duplicate pattern name: %s", name);
-        return FAILED;
+        logError(_logger, "Symbol '%s' already declared", name);
+        return false;
     }
 
-    // Crear entrada
-    SymbolEntry* entry = calloc(1, sizeof(SymbolEntry));
-    entry->name = strdup(name);
-    entry->type = SYMBOL_PATTERN;
-    entry->data = pattern;
+    Symbol * symbol = calloc(1, sizeof(Symbol));
+    if (symbol == NULL) {
+        logError(_logger, "Failed to allocate symbol '%s'", name);
+        return false;
+    }
 
-    // Insertar en bucket (chaining)
-    unsigned int index = _hash(name);
-    entry->next = table->buckets[index];
-    table->buckets[index] = entry;
+    symbol->name = strdup(name);
+    symbol->type = type;
+    if (type == SYMBOL_PATTERN) {
+        symbol->data.pattern = (Pattern *) data;
+    } else {
+        symbol->data.instrument = (Instrument *) data;
+    }
 
-    logDebugging(_logger, "Pattern '%s' inserted into symbol table", name);
-    return SUCCEEDED;
+    unsigned int index = _hash(name, table->capacity);
+    symbol->next = table->buckets[index];
+    table->buckets[index] = symbol;
+    table->size++;
+    return true;
+}
+
+bool insertPattern(SymbolTable * table, Pattern * pattern) {
+    if (pattern == NULL || pattern->name == NULL) return false;
+    return _insertSymbol(table, pattern->name, SYMBOL_PATTERN, pattern);
+}
+
+bool insertInstrument(SymbolTable * table, Instrument * instrument) {
+    if (instrument == NULL || instrument->name == NULL) return false;
+    return _insertSymbol(table, instrument->name, SYMBOL_INSTRUMENT, instrument);
 }
 ```
 
 2. **Read** (Búsqueda):
 ```c
-SymbolEntry* lookupSymbol(SymbolTable* table, const char* name) {
-    unsigned int index = _hash(name);
-    SymbolEntry* entry = table->buckets[index];
+Symbol * lookupSymbol(SymbolTable * table, const char * name) {
+    if (table == NULL || name == NULL) return NULL;
 
-    // Recorrer cadena de colisiones
-    while (entry != NULL) {
-        if (strcmp(entry->name, name) == 0) {
-            return entry;
+    unsigned int index = _hash(name, table->capacity);
+    Symbol * symbol = table->buckets[index];
+
+    while (symbol != NULL) {
+        if (strcmp(symbol->name, name) == 0) {
+            return symbol;
         }
-        entry = entry->next;
+        symbol = symbol->next;
     }
-
-    return NULL;  // No encontrado
+    return NULL;
 }
 ```
 
@@ -842,230 +713,60 @@ Por lo tanto, no se requiere una pila de scopes. La tabla de símbolos única es
 
 **Archivo**: `src/main/c/backend/semantic-analysis/TypeChecker.h/c`
 
-Implementa la función `type(x)` descrita en `Sistema-de-Tipos.md`, que asigna tipos a expresiones y valida compatibilidad.
+Implementa las funciones de verificación descritas en `Sistema-de-Tipos.md`, pero en el código real se modelan como validadores booleanos (`true` = válido, `false` = error) en lugar de un enum de tipos explícito.
 
-**Tipos del lenguaje**:
+**Validaciones implementadas (en resumen):**
 
-```c
-typedef enum {
-    TYPE_RHYTHM_ELEMENT,   // x, ., NOTE
-    TYPE_RHYTHM_ARRAY,     // [e1, e2, ..., en]
-    TYPE_RHYTHM_EXPR,      // expr + expr, array * N
-    TYPE_INTEGER,          // 120, 16, 4
-    TYPE_ACTIVE_RANGE,     // INT-INT
-    TYPE_PATTERN_REF,      // Identificador de patrón
-    TYPE_INVALID           // ⊥ (bottom type)
-} Type;
-```
-
-**Validaciones implementadas**:
-
-1. **Elementos rítmicos**: Solo `x`, `.`, o notas válidas (`[A-G][#b]?[0-9]`):
-```c
-CompilationStatus validateRhythmElement(RhythmElement* element) {
-    if (element == NULL) return FAILED;
-
-    switch (element->type) {
-        case HIT:
-        case SILENCE:
-            return SUCCEEDED;
-
-        case NOTE:
-            // Validar formato de nota
-            if (!isValidNoteFormat(element->noteValue)) {
-                logError(_logger, "Invalid note format: %s", element->noteValue);
-                return FAILED;
-            }
-            return SUCCEEDED;
-
-        default:
-            logError(_logger, "Unknown rhythm element type");
-            return FAILED;
-    }
-}
-
-bool isValidNoteFormat(const char* note) {
-    // Formato: [A-G][#b]?[0-9]
-    if (note == NULL || strlen(note) < 2 || strlen(note) > 3) {
-        return false;
-    }
-
-    // Verificar letra (A-G)
-    char letter = note[0];
-    if (letter < 'A' || letter > 'G') {
-        return false;
-    }
-
-    int idx = 1;
-
-    // Verificar alteración opcional
-    if (note[idx] == '#' || note[idx] == 'b') {
-        idx++;
-    }
-
-    // Verificar octava (0-9)
-    if (idx >= strlen(note) || note[idx] < '0' || note[idx] > '9') {
-        return false;
-    }
-
-    return true;
-}
-```
-
-2. **Operadores sobre ritmos**:
-```c
-CompilationStatus validateRhythmExpression(RhythmExpression* expr) {
-    if (expr == NULL) return FAILED;
-
-    switch (expr->type) {
-        case ARRAY:
-            // Validar todos los elementos
-            return validateRhythmElementList(expr->array.elements);
-
-        case REPETITION:
-            // Operando izquierdo: array
-            // Operando derecho: entero positivo
-            if (expr->repetition.repetitions <= 0) {
-                logError(_logger, "Repetition count must be positive: %d",
-                         expr->repetition.repetitions);
-                return FAILED;
-            }
-            return validateRhythmElementList(expr->repetition.array);
-
-        case CONCATENATION:
-            // Ambos operandos deben ser expresiones rítmicas válidas
-            if (validateRhythmExpression(expr->concatenation.left) == FAILED) {
-                return FAILED;
-            }
-            return validateRhythmExpression(expr->concatenation.right);
-
-        default:
-            return FAILED;
-    }
-}
-```
-
-3. **Rangos activos**:
-```c
-CompilationStatus validateActiveRange(ActiveRange* range, int maxCompasses) {
-    if (range == NULL) return FAILED;
-
-    // Validar límites
-    if (range->start < 1 || range->end > maxCompasses) {
-        logError(_logger, "Active range [%d-%d] out of bounds [1-%d]",
-                 range->start, range->end, maxCompasses);
-        return FAILED;
-    }
-
-    // Validar orden
-    if (range->start >= range->end) {
-        logError(_logger, "Active range start (%d) must be less than end (%d)",
-                 range->start, range->end);
-        return FAILED;
-    }
-
-    return SUCCEEDED;
-}
-```
-
-4. **Declaraciones positivas**:
-```c
-CompilationStatus validateDeclarations(Declarations* decl) {
-    if (decl == NULL) return FAILED;
-
-    if (decl->tempo <= 0) {
-        logError(_logger, "Tempo must be positive: %d", decl->tempo);
-        return FAILED;
-    }
-
-    if (decl->compasses <= 0) {
-        logError(_logger, "Compasses must be positive: %d", decl->compasses);
-        return FAILED;
-    }
-
-    if (decl->steps <= 0) {
-        logError(_logger, "Steps must be positive: %d", decl->steps);
-        return FAILED;
-    }
-
-    return SUCCEEDED;
-}
-```
+- **Formato de notas**: `validateNoteFormat` comprueba que la nota siga `[A-G][#b]?[0-9…]`, con letra A–G, alteración opcional y al menos un dígito de octava.  
+- **Elementos y expresiones rítmicas**: `validateRhythmElement/Array/Expression` aseguran que solo se usen `HIT`, `SILENCE` o `NOTE` válidas, que los arrays no estén vacíos y que las repeticiones tengan factor positivo.  
+- **Rangos activos**: `validateActiveRange` verifica que `start` y `end` sean positivos y `start ≤ end`, mientras que `validateActiveRangeWithinBounds` exige además `end ≤ compasses`.  
+- **Declaraciones**: `validateDeclarations` exige que `tempo`, `compasses` y `steps` sean estrictamente positivos.
 
 ##### Analizador Semántico
 
 **Archivo**: `src/main/c/backend/semantic-analysis/SemanticAnalyzer.h/c`
 
-Orquesta la validación completa en 4 fases:
+Orquesta la validación completa en 4 fases claramente separadas (ver `SemanticAnalyzer.c`):
+
+1. **Validar declaraciones** (si existen):  
+   Se llama a `validateDeclarations(program->declarations)` y, si falla, se aborta el análisis.
+2. **Construir la tabla de símbolos**:  
+   `_buildSymbolTable(program)` crea una `SymbolTable` con capacidad 64 e inserta todos los patrones e instrumentos mediante `insertPattern` / `insertInstrument`. Detecta nombres duplicados.
+3. **Validar patrones**:  
+   `_validatePatterns(program)` recorre la `PatternList` y utiliza `validateRhythmExpression` para asegurar que todas las expresiones rítmicas sean válidas.
+4. **Validar instrumentos**:  
+   `_validateInstruments(program)` comprueba que:
+   - cada instrumento referencia un patrón existente (`lookupPattern` en la tabla de símbolos global `_symbolTable`);
+   - todos los rangos activos (`ActiveRange *activeRange` y su lista encadenada) sean válidos y estén dentro de `compasses` (`validateActiveRange` + `validateActiveRangeWithinBounds`).
+
+El punto de entrada público queda:
 
 ```c
-CompilationStatus analyzeProgram(Program* program) {
-    logInformation(_logger, "Starting semantic analysis");
+CompilationStatus analyzeProgram(Program * program) {
+    if (program == NULL) return FAILED;
 
-    SymbolTable* table = createSymbolTable();
-
-    // FASE 1: Validar declaraciones
+    /* Paso 1: declaraciones */
     if (program->declarations != NULL) {
-        if (validateDeclarations(program->declarations) == FAILED) {
-            destroySymbolTable(table);
+        if (!validateDeclarations(program->declarations)) {
             return FAILED;
         }
     }
 
-    // FASE 2: Construir tabla de símbolos con patrones
-    PatternList* pattern = program->patterns;
-    while (pattern != NULL) {
-        if (insertPattern(table, pattern->name, pattern) == FAILED) {
-            destroySymbolTable(table);
+    /* Paso 2: tabla de símbolos (patrones + instrumentos) */
+    if (_buildSymbolTable(program) != SUCCEEDED) {
             return FAILED;
-        }
-        pattern = pattern->next;
     }
 
-    // FASE 3: Validar expresiones rítmicas de cada patrón
-    pattern = program->patterns;
-    while (pattern != NULL) {
-        if (validateRhythmExpression(pattern->rhythm) == FAILED) {
-            destroySymbolTable(table);
+    /* Paso 3: validar patrones */
+    if (_validatePatterns(program) != SUCCEEDED) {
             return FAILED;
-        }
-        pattern = pattern->next;
     }
 
-    // FASE 4: Validar instrumentos (referencias a patrones, rangos activos)
-    InstrumentList* instrument = program->instruments;
-    while (instrument != NULL) {
-        // Verificar que el patrón referenciado existe
-        if (!symbolExists(table, instrument->patternName)) {
-            logError(_logger, "Instrument '%s' references undefined pattern '%s'",
-                     instrument->name, instrument->patternName);
-            destroySymbolTable(table);
+    /* Paso 4: validar instrumentos */
+    if (_validateInstruments(program) != SUCCEEDED) {
             return FAILED;
-        }
-
-        // Validar rangos activos
-        if (program->declarations != NULL) {
-            ActiveRange* range = instrument->activeRanges;
-            while (range != NULL) {
-                if (validateActiveRange(range, program->declarations->compasses) == FAILED) {
-                    destroySymbolTable(table);
-                    return FAILED;
-                }
-                range = range->next;
-            }
-        }
-
-        // Insertar instrumento en tabla de símbolos
-        if (insertInstrument(table, instrument->name, instrument) == FAILED) {
-            destroySymbolTable(table);
-            return FAILED;
-        }
-
-        instrument = instrument->next;
     }
 
-    destroySymbolTable(table);
-    logInformation(_logger, "Semantic analysis completed successfully");
     return SUCCEEDED;
 }
 ```
@@ -1097,56 +798,53 @@ Implementa el patrón de **atributos sintetizados con descenso recursivo**:
 4. **Abstracción de salida**: Función `output()` encapsula escritura binaria.
 
 ```c
-void generate(Program* program) {
-    // 1. Generar header MIDI
-    outputMidiHeader(program);
+/* Punto de entrada del backend (Generator.c) */
+void executeGenerator(CompilerState * compilerState) {
+    logDebugging(_logger, "Generating final output...");
 
-    // 2. Generar track 0: metadata (tempo, time signature)
-    outputMetadataTrack(program->declarations);
+    /* 1. Imprimir resumen textual del programa */
+    _generateProgram(compilerState->abstractSyntaxtTree);
 
-    // 3. Para cada instrumento, generar track
-    InstrumentList* instrument = program->instruments;
-    while (instrument != NULL) {
-        generateInstrumentTrack(instrument, program);
-        instrument = instrument->next;
-    }
-}
-
-void generateInstrumentTrack(Instrument* instr, Program* program) {
-    // Resolver patrón desde tabla de símbolos
-    Pattern* pattern = lookupPattern(instr->patternName);
-
-    // Expandir expresión rítmica (delegación recursiva)
-    RhythmElement* expanded = expandRhythmExpression(pattern->rhythm);
-
-    // Generar eventos MIDI solo en rangos activos
-    ActiveRange* range = instr->activeRanges;
-    while (range != NULL) {
-        for (int compass = range->start; compass <= range->end; compass++) {
-            generateEventsForCompass(instr, expanded, compass, program->declarations);
+    /* 2. Generar archivo MIDI solo si el programa está completo */
+    Program * program = compilerState->abstractSyntaxtTree;
+    if (program != NULL && program->declarations != NULL && program->instruments != NULL) {
+        CompilationStatus status = generateMidiFile(program, "output.mid");
+        if (status == SUCCEEDED) {
+            printf("\n✓ MIDI file generated: output.mid\n");
+        } else {
+            printf("\n✗ MIDI generation failed\n");
         }
-        range = range->next;
+    } else {
+        logDebugging(_logger, "Skipping MIDI generation (pattern library or incomplete program)");
     }
 }
 
-// Expansión recursiva de expresiones (atributos sintetizados)
-RhythmElement* expandRhythmExpression(RhythmExpression* expr) {
-    switch (expr->type) {
-        case ARRAY:
-            // Caso base: retornar array directamente
-            return copyRhythmElementList(expr->array.elements);
+/* Generación del archivo MIDI (MidiGenerator.c, simplificado) */
+CompilationStatus generateMidiFile(Program * program, const char * outputFilename) {
+    /* Abrir archivo, contar instrumentos y escribir header MThd */
+    /* ... */
 
-        case REPETITION:
-            // Atributo sintetizado: repetir array N veces
-            return repeatRhythmArray(expr->repetition.array,
-                                     expr->repetition.repetitions);
+    /* Track 0: metadata (tempo + time signature) */
+    _generateMetadataTrack(program);
 
-        case CONCATENATION:
-            // Atributo sintetizado: append(expand(left), expand(right))
-            RhythmElement* left = expandRhythmExpression(expr->concatenation.left);
-            RhythmElement* right = expandRhythmExpression(expr->concatenation.right);
-            return appendRhythmLists(left, right);
+    /* Tracks de instrumentos: uno por Instrument en InstrumentList */
+    InstrumentList * instList = program->instruments;
+    SymbolTable * symbolTable = getSymbolTable(); /* construida en el análisis semántico */
+
+    while (instList != NULL && instList->instrument != NULL) {
+        Instrument * instrument = instList->instrument;
+        Pattern * pattern = lookupPattern(symbolTable, instrument->patternName);
+        if (pattern == NULL) {
+            /* error: patrón no encontrado */
+            return FAILED;
+        }
+
+        _generateInstrumentTrack(program, instrument, pattern);
+        instList = instList->next;
     }
+
+    /* Cerrar archivo y devolver estado */
+    return SUCCEEDED;
 }
 ```
 
@@ -1178,193 +876,28 @@ El compilador genera **Standard MIDI Format 1** (multi-track):
 └─────────────────────────────────────┘
 ```
 
-**Implementación del header**:
+**Implementación del header y eventos** (resumen):
 
-```c
-void writeMidiHeader(FILE* file, int numTracks) {
-    // "MThd" chunk ID
-    fwrite("MThd", 1, 4, file);
-
-    // Chunk size (always 6 bytes)
-    writeInt32BE(file, 6);
-
-    // Format 1 (multi-track, synchronous)
-    writeInt16BE(file, 1);
-
-    // Number of tracks
-    writeInt16BE(file, numTracks);
-
-    // Ticks per quarter note
-    writeInt16BE(file, TPQN);
-}
-
-void writeInt32BE(FILE* file, uint32_t value) {
-    // Big-endian byte order (MIDI standard)
-    uint8_t bytes[4];
-    bytes[0] = (value >> 24) & 0xFF;
-    bytes[1] = (value >> 16) & 0xFF;
-    bytes[2] = (value >> 8) & 0xFF;
-    bytes[3] = value & 0xFF;
-    fwrite(bytes, 1, 4, file);
-}
-```
-
-**Variable-Length Quantity (VLQ) Encoding**:
-
-Los delta times en MIDI se codifican con VLQ para ahorrar espacio:
-
-```c
-void writeVLQ(FILE* file, uint32_t value) {
-    // VLQ: 7 bits de datos + 1 bit de continuación
-    // Ejemplo: 0x3FFF → 0xFF 0x7F
-    //          0x0040 → 0x40
-
-    uint8_t buffer[4];
-    int index = 0;
-
-    // Extraer grupos de 7 bits (de derecha a izquierda)
-    buffer[index++] = value & 0x7F;
-    value >>= 7;
-
-    while (value > 0) {
-        buffer[index++] = (value & 0x7F) | 0x80;  // Bit de continuación
-        value >>= 7;
-    }
-
-    // Escribir en orden inverso (big-endian)
-    for (int i = index - 1; i >= 0; i--) {
-        fwrite(&buffer[i], 1, 1, file);
-    }
-}
-```
-
-**Generación de eventos MIDI**:
-
-```c
-void generateNoteEvent(FILE* file, uint32_t deltaTime, uint8_t channel,
-                       uint8_t note, uint8_t velocity, bool noteOn) {
-    // Escribir delta time (VLQ)
-    writeVLQ(file, deltaTime);
-
-    // Escribir status byte
-    uint8_t status = noteOn ? 0x90 : 0x80;  // Note On / Note Off
-    status |= (channel & 0x0F);             // Canal (0-15)
-    fwrite(&status, 1, 1, file);
-
-    // Escribir data bytes
-    fwrite(&note, 1, 1, file);              // Número de nota (0-127)
-    fwrite(&velocity, 1, 1, file);          // Velocidad (0-127)
-}
-```
+- El header `MThd` se escribe en **big-endian**, con tamaño fijo 6 bytes, formato 1 y `numTracks = 1 + número de instrumentos`.  
+- Los **delta times** se codifican como *Variable-Length Quantity* (VLQ), empaquetando grupos de 7 bits con un bit de continuación; esta lógica está centralizada en una función auxiliar (ver `MidiGenerator.c`).  
+- Los eventos Note On/Off se generan escribiendo: delta time (VLQ), status byte (`0x9?` / `0x8?` + canal) y dos data bytes (nota, velocity).
 
 ##### Mapeo de Elementos Rítmicos a MIDI
 
-**Percusión** (canal 10):
-
-```c
-void mapRhythmElementToMidi(RhythmElement* element, uint8_t* channel, uint8_t* note) {
-    if (element->type == HIT) {
-        *channel = 9;   // Canal 10 (0-indexed = 9)
-        *note = 36;     // MIDI note 36 = Bass Drum 1 (General MIDI)
-    } else if (element->type == SILENCE) {
-        // No generar evento
-    } else if (element->type == NOTE) {
-        // Calcular nota MIDI desde notación anglosajona
-        *channel = 0;   // Canal 1 (melódico)
-        *note = noteToMidiNumber(element->noteValue);
-    }
-}
-```
-
-**Notas melódicas**:
-
-```c
-uint8_t noteToMidiNumber(const char* note) {
-    // Formato: [A-G][#b]?[0-9]
-    // Ejemplo: E2 → 40, A#2 → 46, Bb3 → 58
-
-    // Mapeo de letras a semitonos (C=0, D=2, E=4, ...)
-    const int pitchClass[] = {9, 11, 0, 2, 4, 5, 7};  // A B C D E F G
-
-    char letter = note[0];
-    int semitone = pitchClass[letter - 'A'];
-
-    int idx = 1;
-
-    // Procesar alteración
-    if (note[idx] == '#') {
-        semitone++;
-        idx++;
-    } else if (note[idx] == 'b') {
-        semitone--;
-        idx++;
-    }
-
-    // Extraer octava
-    int octave = note[idx] - '0';
-
-    // Fórmula MIDI: nota = 12 + (octava * 12) + semitono
-    // MIDI note 60 = C4 (middle C)
-    return 12 + (octave * 12) + semitone;
-}
-```
+- `HIT` se mapea a canal 10 (índice 9) y nota 36 (Bass Drum 1, General MIDI).  
+- `SILENCE` no genera eventos.  
+- `NOTE` se mapea a canal melódico (canal 1) y número de nota MIDI calculado desde notación anglosajona (`[A-G][#b]?[0-9...]`).
 
 ##### Cálculo de Timing
 
-El timing preciso es **crítico** para la reproducción correcta. El compilador usa TPQN (Ticks Per Quarter Note) = 480.
+El timing preciso es **crítico** para la reproducción correcta.  
+El compilador fija `TPQN = 480` (ticks por negra) y toma cada `step` como **una negra completa**:
 
-```c
-#define TPQN 480  // Resolución estándar
+- Ticks por step: `ticksPerStep = TPQN`.  
+- Ticks por compás: `ticksPerCompass = TPQN * steps`.  
+- Tick absoluto de un evento: `((compás - 1) * ticksPerCompass) + (índiceStep * ticksPerStep)`.
 
-uint32_t calculateAbsoluteTick(int compass, int stepIndex, int stepsPerCompass) {
-    // Cada paso = 1 quarter note
-    int ticksPerStep = TPQN;
-
-    // Cada compás = steps quarter notes
-    int ticksPerCompass = TPQN * stepsPerCompass;
-
-    // Tick absoluto = (compás * ticks/compás) + (paso * ticks/paso)
-    return ((compass - 1) * ticksPerCompass) + (stepIndex * ticksPerStep);
-}
-```
-
-**Nota sobre Bug #3**: La implementación original usaba `ticksPerStep = TPQN / steps`, lo que causaba reproducción 4x más rápida. La fórmula correcta es `ticksPerStep = TPQN`, porque la signatura temporal es `steps/4`, significando que hay `steps` quarter notes por compás.
-
-##### Distribución de Elementos en Compases (Bug #2)
-
-Un error sutil fue la distribución incorrecta de elementos rítmicos en compases:
-
-**Implementación incorrecta** (reproducía TODO el patrón en CADA compás):
-```c
-// INCORRECTO
-for (int compass = start; compass <= end; compass++) {
-    for (int i = 0; i < totalElements; i++) {  // PROBLEMA: Todos los elementos en cada compás
-        generateEvent(elements[i], compass, i);
-    }
-}
-```
-
-**Implementación correcta** (divide el patrón en chunks):
-```c
-// CORRECTO
-int elementsPerCompass = steps;
-int totalCompasses = totalElements / elementsPerCompass;
-
-for (int compass = start; compass <= end; compass++) {
-    // Calcular qué chunk del patrón corresponde a este compás
-    int rhythmCompassIndex = (compass - 1) % totalCompasses;
-    int startElement = rhythmCompassIndex * elementsPerCompass;
-
-    // Solo generar los elementos de este chunk
-    for (int i = 0; i < elementsPerCompass; i++) {
-        if (startElement + i < totalElements) {
-            generateEvent(elements[startElement + i], compass, i);
-        }
-    }
-}
-```
-
-Esta corrección garantizó que un patrón de 16 elementos con `steps 4` se distribuya en 4 compases (4 elementos por compás), y no que los 16 elementos se reproduzcan en cada compás.
+Los detalles finos de implementación (incluyendo los bugs de timing y distribución de elementos) se documentan en la sección **3.4. Dificultades Encontradas**.
 
 ##### Separación Compiler-Runtime (siguiendo `runtime`)
 
@@ -1407,85 +940,15 @@ Implementa la directiva `remember "file.dsl"` con capacidades avanzadas:
 
 **Implementación**:
 
-```c
-#define MAX_IMPORT_DEPTH 32
+En términos generales, el algoritmo:
 
-static const char* _visitedFiles[MAX_IMPORT_DEPTH];
-static int _visitedCount = 0;
-
-CompilationStatus resolveImports(Program* program) {
-    if (program == NULL || program->imports == NULL) {
-        return SUCCEEDED;
-    }
-
-    logInformation(_logger, "Resolving imports");
-
-    ImportList* import = program->imports;
-    while (import != NULL) {
-        // Resolver recursivamente
-        if (_resolveImportsRecursive(import->filePath, program) == FAILED) {
-            return FAILED;
-        }
-        import = import->next;
-    }
-
-    logInformation(_logger, "All imports resolved successfully");
-    return SUCCEEDED;
-}
-
-static CompilationStatus _resolveImportsRecursive(const char* filePath, Program* mainProgram) {
-    // Detectar ciclos
-    if (_isAlreadyVisited(filePath)) {
-        logError(_logger, "Circular dependency detected: %s", filePath);
-        return FAILED;
-    }
-
-    // Verificar profundidad máxima
-    if (_visitedCount >= MAX_IMPORT_DEPTH) {
-        logError(_logger, "Maximum import depth exceeded (%d)", MAX_IMPORT_DEPTH);
-        return FAILED;
-    }
-
-    // Marcar como visitado
-    _markAsVisited(filePath);
-
-    // Verificar existencia del archivo
-    if (access(filePath, F_OK) != 0) {
-        logError(_logger, "Import file not found: %s", filePath);
-        _unmarkLastVisited();
-        return FAILED;
-    }
-
-    // Parsear archivo importado (con lexer independiente)
-    Program* importedProgram = _parseFile(filePath);
-    if (importedProgram == NULL) {
-        _unmarkLastVisited();
-        return FAILED;
-    }
-
-    // Resolver imports anidados recursivamente
-    if (importedProgram->imports != NULL) {
-        if (_resolveImportsRecursive(importedProgram->imports->filePath, mainProgram) == FAILED) {
-            destroyProgram(importedProgram);
-            _unmarkLastVisited();
-            return FAILED;
-        }
-    }
-
-    // Mergear patrones del archivo importado al programa principal
-    mainProgram->patterns = _mergePatternLists(mainProgram->patterns,
-                                               importedProgram->patterns);
-
-    // Liberar AST importado (sin destruir los patrones, ahora owned por mainProgram)
-    importedProgram->patterns = NULL;  // Transferir ownership
-    destroyProgram(importedProgram);
-
-    // Backtracking: desmarcar archivo para permitir re-importación desde otras ramas
-    _unmarkLastVisited();
-
-    return SUCCEEDED;
-}
-```
+1. Mantiene una **pila de archivos visitados** (`_visitedFiles`, `_visitedCount`) para detectar ciclos y respetar una profundidad máxima de imports.  
+2. Para cada `remember "file.dsl"`:
+   - Verifica existencia del archivo.
+   - Crea un **lexer/parser independientes** y parsea el archivo completo a un `Program * importedProgram`.
+3. Resuelve recursivamente los imports anidados de `importedProgram`.  
+4. Hace *merge* de la `PatternList` importada dentro del programa principal (`Program * mainProgram`), transfiriendo el ownership de los patrones.  
+5. Destruye el AST importado y hace *backtracking* en la pila de visitados para permitir patrones en diamante sin falsos positivos de ciclo.
 
 **Detección de ciclos con backtracking**:
 
@@ -1592,594 +1055,70 @@ Durante el desarrollo del compilador, se encontraron 5 bugs significativos que r
 
 #### Bug #1: Orden de Elementos Rítmicos (Melodía Invertida)
 
-**Síntoma**: Las melodías se reproducían al revés. Un patrón `[E2,G2,A2]` sonaba como `A2,G2,E2`.
+**Síntoma**: Las melodías se reproducían al revés (`[E2,G2,A2]` sonaba como `A2,G2,E2`).
 
-**Causa raíz**: En `BisonActions.c`, la función `RhythmElementListSemanticAction` estaba **prepending** elementos a la lista en lugar de **appending**:
+**Causa raíz**: La acción semántica que construía `RhythmElementList` hacía *prepending* en lugar de *appending*, invirtiendo el orden natural de los elementos al reducir `rhythm_element_list: rhythm_element_list COMMA rhythm_element`.
 
-```c
-// INCORRECTO (prepending)
-RhythmElementList* RhythmElementListSemanticAction(RhythmElementList* list,
-                                                    RhythmElement* element) {
-    element->next = list;  // ❌ Nuevo elemento apunta al inicio
-    return element;        // ❌ Retorna nuevo elemento como cabeza
-}
-// Resultado: orden inverso
-```
-
-**Explicación**: LALR parsers procesan las producciones de izquierda a derecha. En la producción `rhythm_element_list: rhythm_element_list COMMA rhythm_element`, primero se reduce `rhythm_element_list` (elementos previos), luego se añade el nuevo `rhythm_element`. Al hacer prepending, el último elemento procesado se coloca al principio, invirtiendo el orden.
-
-**Solución**: Recorrer la lista hasta el final y appendar:
-
-```c
-// CORRECTO (appending)
-RhythmElementList* RhythmElementListSemanticAction(RhythmElementList* list,
-                                                    RhythmElement* element) {
-    if (list == NULL) {
-        return element;  // Caso base
-    }
-
-    // Recorrer hasta el final
-    RhythmElement* current = list;
-    while (current->next != NULL) {
-        current = current->next;
-    }
-
-    // Appendar al final
-    current->next = element;
-    return list;  // Retornar cabeza original
-}
-```
-
-En conclusión, en parsers LALR, el orden de construcción de listas es crítico. Siempre visualizar el orden de reducción.
+**Solución**: Cambiar la acción para recorrer la lista hasta el final y appendar el nuevo nodo, preservando el orden de aparición en el código fuente.
 
 #### Bug #2: Distribución de Elementos en Compases
 
-**Síntoma**: Todos los elementos del patrón se reproducían en cada compás, creando un efecto de "aceleración" donde todo sonaba simultáneamente.
+**Síntoma**: Todos los elementos del patrón se reproducían en cada compás, generando un efecto de “muro de sonido” y aceleración artificial.
 
-**Causa raíz**: El loop de generación de eventos no estaba **distribuyendo** los elementos entre compases, sino **repitiendo** todo el patrón en cada compás:
+**Causa raíz**: El bucle de generación MIDI recorría la lista expandida completa para cada compás, en lugar de tomar solo el “slice” correspondiente a ese compás.
 
-```c
-// INCORRECTO
-for (int compass = start; compass <= end; compass++) {
-    for (int i = 0; i < totalElements; i++) {
-        generateMidiEvent(elements[i], compass, i);  // Todos en cada compás
-    }
-}
-```
-
-**Ejemplo del error**:
-```dsl
-rhythm [x,.,x,.] * 4  // 16 elementos = [x,.,x,.,x,.,x,.,x,.,x,.,x,.,x,.,x,.]
-compasses 8
-steps 4
-```
-
-Con el código incorrecto, los 16 elementos se reproducían en cada uno de los 8 compases (128 eventos en total), cuando debían distribuirse: elementos 0-3 en compás 1, elementos 4-7 en compás 2, etc.
-
-**Solución**: Dividir el patrón expandido en chunks de tamaño `steps` y mapear cada chunk a un compás:
-
-```c
-// CORRECTO
-int elementsPerCompass = steps;
-int totalRhythmCompasses = (totalElements + elementsPerCompass - 1) / elementsPerCompass;
-
-for (int compass = start; compass <= end; compass++) {
-    // Calcular índice del compás en el patrón (con wrap-around)
-    int rhythmCompassIndex = (compass - 1) % totalRhythmCompasses;
-    int startElement = rhythmCompassIndex * elementsPerCompass;
-
-    // Generar solo los elementos de este chunk
-    for (int i = 0; i < elementsPerCompass && (startElement + i) < totalElements; i++) {
-        generateMidiEvent(elements[startElement + i], compass, i);
-    }
-}
-```
-
-**Cálculo del wrap-around**: Si el patrón tiene 4 compases de ritmo pero el instrumento está activo durante 16 compases, el patrón se cicla: compases 1-4 usan ciclo 1, compases 5-8 usan ciclo 2, etc.
+**Solución**: Calcular cuántos elementos caben por compás (`steps`), dividir el patrón expandido en chunks y, para cada compás, reproducir únicamente el chunk adecuado, ciclando con módulo cuando el instrumento está activo más compases que los que ocupa el patrón.
 
 #### Bug #3: Timing MIDI (Reproducción 4x Más Rápida)
 
 **Síntoma**: Los archivos MIDI se reproducían 4 veces más rápido de lo esperado. Un programa con `tempo 120` sonaba como tempo 480.
 
-**Causa raíz**: Cálculo incorrecto de `ticksPerStep`:
+**Causa raíz**: Se interpretó erróneamente que cada `step` era una fracción de negra, y se calculó `ticksPerStep = TPQN / steps`. En el diseño final del lenguaje, cada `step` **es** una negra completa, por lo que debía usarse `ticksPerStep = TPQN`.
 
-```c
-// INCORRECTO
-#define TPQN 480  // Ticks Per Quarter Note
-int ticksPerStep = TPQN / steps;  // Si steps=4, ticksPerStep=120
-```
-
-**Explicación del error**:
-
-En MIDI, TPQN (Ticks Per Quarter Note) define la resolución temporal: 480 ticks = 1 quarter note (negra).
-
-La signatura temporal del lenguaje es `steps/4`, donde `steps` es el número de quarter notes por compás. Por ejemplo:
-- `steps 4` → 4/4 (4 negras por compás)
-- `steps 8` → 8/4 (8 negras por compás)
-
-Si `ticksPerStep = TPQN / steps`:
-- Con `steps=4`: `ticksPerStep = 480 / 4 = 120 ticks`
-- Pero cada step es 1 quarter note, entonces `ticksPerStep` debería ser 480 ticks, no 120.
-
-El error interpretaba "step" como subdivisión de quarter note (como 16th notes), cuando en realidad cada step **es** una quarter note completa.
-
-**Solución**: Cada step = 1 quarter note:
-
-```c
-// CORRECTO
-int ticksPerStep = TPQN;  // 480 ticks = 1 quarter note = 1 step
-```
-
-**Cálculo de ticks absolutos**:
-```c
-uint32_t calculateAbsoluteTick(int compass, int stepIndex, int stepsPerCompass) {
-    int ticksPerCompass = TPQN * stepsPerCompass;
-    return ((compass - 1) * ticksPerCompass) + (stepIndex * TPQN);
-}
-```
-
-En conclusión, los formatos binarios (como MIDI) tienen especificaciones precisas que deben entenderse completamente. Un error de interpretación puede causar comportamiento sutilmente incorrecto.
-
-Relacionado con `runtime`: entender el formato del runtime (MIDI) es esencial para generar salida correcta.
+**Solución**: Fijar `ticksPerStep = TPQN` y derivar a partir de allí los ticks por compás y los tiempos absolutos. El bug mostró lo delicado que es interpretar correctamente la especificación MIDI.
 
 #### Bug #4: Declaraciones Obligatorias en Archivos de Biblioteca
 
 **Síntoma**: Los tests CI/CD fallaban al intentar parsear archivos de biblioteca (pattern-only files) que no contenían declaraciones (`tempo`, `compasses`, `steps`).
 
-**Causa raíz**: El analizador semántico asumía que `program->declarations` siempre estaba presente:
+**Causa raíz**: El analizador semántico asumía que `program->declarations` nunca era `NULL`, ignorando que la gramática permite archivos con solo patrones (bibliotecas).
 
-```c
-// INCORRECTO
-CompilationStatus analyzeProgram(Program* program) {
-    // Asume que declarations existe
-    if (validateDeclarations(program->declarations) == FAILED) {
-        return FAILED;
-    }
-    // ...
-}
-```
-
-Pero archivos de biblioteca como `lib/patterns.dsl` solo contienen patrones:
-
-```dsl
-// lib/patterns.dsl (sin declaraciones)
-pattern basic {
-    rhythm [x,.,x,.]
-}
-```
-
-**Explicación del problema**: La gramática permite `declarations` opcionales (puede ser `NULL`), pero el análisis semántico no manejaba este caso. Esto violaba el principio de que patrones tienen **ámbito global** y pueden definirse independientemente.
-
-**Solución**: Hacer las validaciones condicionales:
-
-```c
-// CORRECTO
-CompilationStatus analyzeProgram(Program* program) {
-    // Validar declaraciones solo si existen
-    if (program->declarations != NULL) {
-        if (validateDeclarations(program->declarations) == FAILED) {
-            return FAILED;
-        }
-    }
-
-    // Validar rangos activos solo si hay declaraciones
-    if (program->declarations != NULL && instrument->activeRanges != NULL) {
-        if (validateActiveRange(range, program->declarations->compasses) == FAILED) {
-            return FAILED;
-        }
-    }
-
-    // ...
-}
-```
-
-Además, la generación de MIDI debe saltarse si no hay declaraciones:
-
-```c
-// En Generator.c
-CompilationStatus generate(Program* program) {
-    // Generar resumen textual siempre
-    printProgramSummary(program);
-
-    // Generar MIDI solo si hay declaraciones e instrumentos
-    if (program->declarations != NULL && program->instruments != NULL) {
-        generateMidiFile(program);
-    } else {
-        logInformation(_logger, "Skipping MIDI generation (pattern library file)");
-    }
-
-    return SUCCEEDED;
-}
-```
-
-En conclusión, los compiladores deben manejar casos edge como archivos parciales, bibliotecas, y programas incompletos. No todos los archivos son programas completos.
-
-Relacionado con `Scopes` - los patrones tienen ámbito global y pueden existir independientemente de un programa principal.
+**Solución**: Hacer que `analyzeProgram` trate las declaraciones como opcionales (validarlas solo si existen) y que tanto la validación de rangos activos como la generación de MIDI se salten cuando el archivo es solo una librería de patrones. Esto respeta el modelo de *scope global* para patrones.
 
 #### Bug #5: Fugas de Memoria Durante Importación
 
-**Síntoma**: AddressSanitizer reportaba fugas de memoria (57 bytes) al ejecutar tests con imports:
+**Síntoma**: AddressSanitizer reportaba pequeñas fugas de memoria al ejecutar tests con imports encadenados.
 
-```
-==12345==ERROR: LeakSanitizer: detected memory leaks
+**Causa raíz**: Cada import inicializaba nuevamente los módulos de Flex/Bison, creando loggers adicionales que nunca se destruían.
 
-Direct leak of 57 byte(s) in 4 object(s) allocated from:
-    #0 in malloc
-    #1 in createLogger
-    #2 in initializeFlexActionsModule
-```
-
-**Causa raíz**: Cada archivo importado requiere su propio lexical analyzer, lo que causa reinicialización de módulos. `initializeFlexActionsModule()` y `initializeBisonActionsModule()` creaban un nuevo logger en cada invocación:
-
-```c
-// INCORRECTO
-ModuleDestructor initializeFlexActionsModule(LexicalAnalyzer* lexicalAnalyzer) {
-    _lexicalAnalyzer = lexicalAnalyzer;
-    _logger = createLogger("FlexActions");  // Crea logger cada vez
-    return _shutdownFlexActionsModule;
-}
-```
-
-**Ejemplo del problema**:
-```
-main.dsl → initializeFlexActionsModule() → logger creado (dirección 0x1000)
-  ├─ import A.dsl → initializeFlexActionsModule() → logger creado (dirección 0x2000)
-  │                                                    0x1000 leaked
-  └─ import B.dsl → initializeFlexActionsModule() → logger creado (dirección 0x3000)
-                                                      0x2000 leaked
-```
-
-**Solución**: Verificar si el logger ya existe antes de crearlo (patrón singleton):
-
-```c
-// CORRECTO
-ModuleDestructor initializeFlexActionsModule(LexicalAnalyzer* lexicalAnalyzer) {
-    _lexicalAnalyzer = lexicalAnalyzer;
-
-    // Solo crear logger si no existe (permite múltiples inicializaciones)
-    if (_logger == NULL) {
-        _logger = createLogger("FlexActions");
-    }
-
-    return _shutdownFlexActionsModule;
-}
-```
-
-La misma corrección se aplicó a `initializeBisonActionsModule()`.
-
-**Consideración**: Esta solución asume que todos los lexers comparten el mismo logger, lo cual es aceptable porque los logs se distinguen por contexto. Una alternativa sería mantener un logger por lexer, pero requeriría refactoring más profundo.
-
-La gestión de recursos globales (como loggers) en módulos que pueden reinicializarse requiere cuidado especial. Los patrones singleton son útiles pero deben aplicarse conscientemente.
-
-Este bug surgió de la interacción entre el sistema de imports recursivos y la inicialización de módulos - un ejemplo de cómo características avanzadas pueden exponer bugs latentes en código base.
+**Solución**: Aplicar un patrón de inicialización única: `initializeFlexActionsModule` e `initializeBisonActionsModule` ahora solo crean el logger si `_logger == NULL`, compartiéndolo entre todas las instancias de lexer/parser de imports. Esto eliminó las fugas sin complicar el diseño.
 
 ---
 
 ## 4. Futuras Extensiones
 
-El compilador actual implementa un MVP funcional con todas las características core. Las siguientes extensiones podrían expandir significativamente las capacidades del lenguaje:
-
-### 4.1. Extensiones del Lenguaje
-
-#### 4.1.1. Velocidad (Velocity) Variable
-
-**Motivación**: Actualmente todos los hits tienen velocidad fija (MIDI velocity = 100). La música real requiere dinámica (forte, piano, acentos).
-
-**Propuesta sintáctica**:
-```dsl
-pattern hihat {
-    // Notación: elemento@velocidad (0-127)
-    rhythm [x@127, x@80, x@100, x@80]  // Acento en tiempo 1
-}
-
-// O con modificadores textuales
-pattern hihat {
-    rhythm [x@forte, x@piano, x@mezzo, x@piano]
-}
-```
-
-**Implementación**:
-- Extender `RhythmElement` con campo `velocity`
-- Modificar lexer para reconocer `@` y valores de velocidad
-- Mapear modificadores textuales a valores MIDI estándar
-- Generar MIDI velocity bytes apropiados
-
-Requiere cambios en lexer, parser, y generador.
-
-#### 4.1.2. Selección de Instrumentos MIDI
-
-**Motivación**: Actualmente, percusión usa siempre kick drum (note 36). Los instrumentos melódicos no tienen program change (usan piano por defecto).
-
-**Propuesta sintáctica**:
-```dsl
-instruments {
-    kick {
-        midiInstrument 36      // Bass Drum 1 (General MIDI)
-        pattern kickPattern
-        active 1-16
-    }
-
-    bass {
-        midiProgram 33         // Acoustic Bass (program change)
-        midiChannel 1
-        pattern bassPattern
-        active 1-16
-    }
-}
-```
-
-**Implementación**:
-- Agregar campos opcionales `midiInstrument`, `midiProgram`, `midiChannel` al nodo `Instrument`
-- Generar eventos MIDI Program Change al inicio de cada track
-- Validar rangos (note: 0-127, program: 0-127, channel: 0-15)
-
-**Complejidad**: Media
-
-#### 4.1.3. Duración de Notas
-
-**Motivación**: Actualmente, todas las notas duran exactamente 1 step. La música real requiere staccato (corto) y legato (sostenido).
-
-**Propuesta sintáctica**:
-```dsl
-pattern bass {
-    // Notación: elemento:duración (en pasos)
-    rhythm [E2:2, ., A2:1, .]  // E2 dura 2 steps, A2 dura 1 step
-}
-
-// O con modificadores
-rhythm [E2:staccato, E2:legato]
-```
-
-**Implementación**:
-- Extender `RhythmElement` con campo `duration`
-- Calcular Note Off time: `noteOffTick = noteOnTick + (duration * ticksPerStep)`
-- Manejar overlap de notas (polifonía)
-
-**Complejidad**: Media-Alta
-
-#### 4.1.4. Variables y Constantes
-
-**Motivación**: Evitar repetición de valores "mágicos" y facilitar experimentación.
-
-**Propuesta sintáctica**:
-```dsl
-// Definir constantes
-const FAST_TEMPO = 140
-const MAIN_PATTERN_LENGTH = 16
-
-tempo FAST_TEMPO
-compasses MAIN_PATTERN_LENGTH
-steps 4
-```
-
-**Implementación**:
-- Nueva fase de preprocesamiento antes del parsing
-- Tabla de constantes separada de la tabla de símbolos
-- Sustitución textual o evaluación durante semantic analysis
-
-**Complejidad**: Media
-
-#### 4.1.5. Operador de Interleaving (Shuffle)
-
-**Motivación**: Combinar dos patrones de manera entrelazada (útil para hi-hats alternados).
-
-**Propuesta sintáctica**:
-```dsl
-pattern shuffled {
-    // Operador ~ intercala elementos: [a,b] ~ [c,d] = [a,c,b,d]
-    rhythm [x,.] ~ [.,x]  // Resultado: [x,.,.,x]
-}
-```
-
-**Implementación**:
-- Nuevo tipo de `RhythmExpression`: INTERLEAVE
-- Algoritmo: tomar alternadamente de ambas listas
-- Validar que ambas listas tengan la misma longitud (o definir comportamiento para longitudes desiguales)
-
-**Complejidad**: Baja
-
-### 4.2. Extensiones de Análisis
-
-#### 4.2.1. Advertencias de Optimización
-
-**Motivación**: Detectar patrones subóptimos que podrían simplificarse.
-
-**Ejemplos**:
-```dsl
-// ⚠️ Advertencia: repetición innecesaria
-rhythm [x,.,x,.] * 1  // Sugerir: [x,.,x,.]
-
-// ⚠️ Advertencia: concatenación puede combinarse
-rhythm [x,.] + [x,.]  // Sugerir: [x,.,x,.]
-
-// ⚠️ Advertencia: silencio completo
-rhythm [.,.,.,.] * 4  // Instrumento no produce sonido
-```
-
-**Implementación**:
-- Nueva fase de optimización/análisis después de semantic analysis
-- Logs con nivel WARNING
-- No bloquear compilación (solo advertencias)
-
-**Complejidad**: Baja
-
-#### 4.2.2. Detección de Polirritmia
-
-**Motivación**: Advertir cuando patrones tienen longitudes inconmensurables (podría ser que el usuario esté creando efectos rítmicos no intencionales).
-
-**Ejemplo**:
-```dsl
-tempo 120
-compasses 8
-steps 4  // 4 steps por compás
-
-pattern A {
-    rhythm [x,.,x]  // 3 elementos → periodo de 3 steps
-}
-
-instruments {
-    inst {
-        pattern A
-        active 1-8  // 8 compases * 4 steps = 32 steps totales
-                    // 32 no es múltiplo de 3 → patrón se trunca
-    }
-}
-```
-
-**Implementación**:
-- Calcular MCD entre longitud del patrón y steps
-- Si `totalElements % steps != 0`, emitir advertencia
-- Sugerir ajustar patrón o steps
-
-**Complejidad**: Baja
-
-### 4.3. Extensiones del Backend
-
-#### 4.3.1. Exportación a Otros Formatos
-
-**Motivación**: Ampliar compatibilidad con diferentes workflows.
-
-**Formatos propuestos**:
-1. **JSON** (para DAWs web, visualizadores)
-2. **MusicXML** (para editores de partituras)
-3. **WAV** (audio directo, requiere síntesis)
-4. **Ableton Live Clips** (integración con Ableton)
-
-**Implementación**:
-- Flag en línea de comandos: `--output-format midi|json|musicxml|wav`
-- Generadores separados para cada formato
-- Reutilizar el AST expandido (conversión independiente)
-
-**Complejidad**: Alta (especialmente WAV, requiere síntesis de audio)
-
-#### 4.3.2. Optimización de MIDI
-
-**Motivación**: Los archivos MIDI actuales podrían ser más eficientes.
-
-**Optimizaciones**:
-1. **Running Status**: Omitir status bytes repetidos consecutivos (reduce tamaño ~20%)
-2. **Note Off con Velocity 0**: Usar Note On con velocity=0 en lugar de Note Off (puede ahorrar 1 byte por evento)
-3. **Compresión de Delta Times**: Usar deltas relativos más cortos cuando sea posible
-
-**Implementación**:
-- Agregar pase de optimización antes de escribir archivo
-- Flag: `--optimize-midi`
-
-**Complejidad**: Media
-
-#### 4.3.3. Generación de Audio (WAV)
-
-**Motivación**: Reproducción inmediata sin depender de soundfonts del cliente.
-
-**Implementación**:
-- Integrar librería de síntesis (ej. FluidSynth, libsndfile)
-- Cargar soundfont (SF2) desde ruta configurable
-- Renderizar MIDI events a samples de audio
-- Escribir WAV con formato PCM (16-bit, 44.1kHz)
-
-**Desafío**: Requiere dependencia externa (viola principio de runtime.md de "cero dependencias")
-
-**Complejidad**: Alta
-
-### 4.4. Herramientas y Utilidades
-
-#### 4.4.1. REPL Interactivo
-
-**Motivación**: Experimentación rápida sin crear archivos.
-
-**Ejemplo de uso**:
-```bash
-$ dsl-repl
-DrumDSL> tempo 140
-DrumDSL> pattern test { rhythm [x,.,x,.] }
-DrumDSL> :play test
-[Reproduce patrón]
-DrumDSL> :export test output.mid
-[Exporta a MIDI]
-```
-
-**Implementación**:
-- Loop read-eval-print sobre el compilador
-- Mantener estado (patrones definidos previamente)
-- Comandos especiales (`:play`, `:export`, `:list`, `:clear`)
-
-**Complejidad**: Media-Alta
-
-#### 4.4.2. Visualizador de Patrones
-
-**Motivación**: Debugging visual de ritmos complejos.
-
-**Funcionalidad**:
-- Generar representación ASCII o HTML de patrones
-- Grid view: compases × steps
-- Color coding: hits vs silence vs notas
-
-**Ejemplo de salida**:
-```
-Pattern: kickPattern (16 elements over 4 compasses)
-
-Compass 1: [X . X . ]
-Compass 2: [X . X . ]
-Compass 3: [X . X . ]
-Compass 4: [X . X . ]
-
-Legend: X=hit, .=silence
-```
-
-**Implementación**:
-- Nueva opción: `--visualize` o `--dry-run`
-- Reutilizar lógica de expansión de ritmos
-- Generar output textual o HTML
-
-**Complejidad**: Baja-Media
-
-#### 4.4.3. Language Server Protocol (LSP)
-
-**Motivación**: Soporte IDE con autocompletado, go-to-definition, error highlighting.
-
-**Funcionalidades LSP**:
-1. **Syntax Highlighting**: Colores para keywords, identificadores, literales
-2. **Autocompletado**: Sugerir nombres de patrones, keywords
-3. **Diagnósticos**: Errores y warnings en tiempo real
-4. **Go to Definition**: Click en `pattern kickPattern` salta a su definición
-5. **Hover**: Mostrar información (tipo, longitud de patrón, etc.)
-
-**Implementación**:
-- Wrapper del compilador que expone LSP JSON-RPC
-- Mantener AST en memoria para queries rápidos
-- Integrar con VS Code, Vim, Emacs, etc.
-
-**Complejidad**: Alta
-
-### 4.5. Mejoras de Performance
-
-#### 4.5.1. Compilación Incremental
-
-**Motivación**: Recompilar solo archivos modificados (importante para proyectos grandes con muchos imports).
-
-**Implementación**:
-- Cachear ASTs de archivos importados (con timestamps)
-- Solo re-parsear si el archivo cambió desde última compilación
-- Invalidar cache de dependientes recursivamente
-
-**Complejidad**: Media-Alta
-
-#### 4.5.2. Paralelización
-
-**Motivación**: Aprovechar múltiples cores para compilación más rápida.
-
-**Oportunidades**:
-1. Parsear imports en paralelo (si no hay dependencias circulares)
-2. Generar tracks MIDI en paralelo (independientes)
-3. Validaciones semánticas en paralelo
-
-**Implementación**:
-- Usar pthreads o OpenMP
-- Sincronización cuidadosa para evitar race conditions
-
-**Complejidad**: Alta
-
-### 4.6. Resumen de Extensiones
+El compilador actual implementa un MVP funcional completo. A futuro, se identificaron posibles líneas de trabajo, agrupadas en cuatro ejes:
+
+- **Extensiones del lenguaje**:
+  - Velocity variable por evento (`x@127`, `x@piano`).
+  - Selección explícita de instrumentos y canales MIDI por instrumento.
+  - Duración de notas configurable, más allá de 1 step fijo.
+  - Azúcar sintáctico (constantes, operadores adicionales como interleaving).
+
+- **Extensiones de análisis**:
+  - Advertencias de optimización (repeticiones innecesarias, patrones silenciosos, etc.).
+  - Detección de polirritmias y patrones que no calzan exactamente en la grilla de compases.
+
+- **Extensiones del backend**:
+  - Exportar a otros formatos (JSON, MusicXML) reutilizando el AST expandido.
+  - Opcionalmente, generación de audio (WAV) a través de un runtime externo.
+
+- **Herramientas y performance**:
+  - Visualizador de patrones (ASCII/HTML) para debugging rápido.
+  - REPL interactivo orientado a experimentación.
+  - Compilación incremental y posibles optimizaciones de rendimiento (paralelización, MIDI más compacto).
+
+### Resumen de Extensiones
 
 | Motivación | Extensión | Justificación |
 |-----------|-----------|---------------|
@@ -2190,8 +1129,9 @@ Legend: X=hit, .=silence
 | 🟡 Media | Exportación JSON | Abre integración con otras herramientas |
 | 🟢 Baja | REPL | Nice-to-have, no crítico |
 | 🟢 Baja | Optimización MIDI | Mejora marginal |
-| ⚪ Futuro | LSP | Requiere inversión significativa |
 | ⚪ Futuro | Generación WAV | Viola arquitectura actual (runtime.md) |
+
+Estas ideas quedan como hoja de ruta y no forman parte del alcance de la versión descrita en este informe.
 
 ---
 
@@ -2251,49 +1191,11 @@ El DSL alcanza un balance entre simplicidad y expresividad:
 
 ### 5.2. Lecciones Aprendidas
 
-#### 5.2.1. Orden Importa en Flex
-
-El ordenamiento de reglas en `FlexPatterns.l` es **crítico**. Patrones específicos deben preceder a patrones generales, o tokens como `x` (HIT) serán capturados incorrectamente por el patrón de identificador. Esta lección se aplica universalmente a todos los lexers basados en expresiones regulares.
-
-#### 5.2.2. Gestión de Memoria en C Requiere Disciplina
-
-A pesar de usar `calloc()` para inicialización segura y destructores recursivos, surgieron 5 bugs relacionados con memoria:
-- Strings copiados incorrectamente (faltaba `strdup()`)
-- Loggers duplicados durante imports (faltaba verificación de singleton)
-- Ownership ambiguo durante merging de ASTs importados
-
-**Lección**: En proyectos C grandes, considerar herramientas como Valgrind y AddressSanitizer desde el día 1. La detección temprana de fugas ahorra horas de debugging.
-
-#### 5.2.3. Testing Exhaustivo Detecta Bugs Sutiles
-
-Los 5 bugs críticos fueron detectados por el suite de testing:
-- **Bug #1** (melodía inversa): Detectado por test de patrones melódicos
-- **Bug #2** (distribución incorrecta): Detectado al escuchar MIDI generado
-- **Bug #3** (timing 4x rápido): Detectado al comparar tempo real vs. esperado
-- **Bug #4** (declaraciones obligatorias): Detectado por tests de imports
-- **Bug #5** (fugas de memoria): Detectado por AddressSanitizer
-
-**Lección**: El testing no debe ser una fase final, sino continuo durante el desarrollo. Cada nueva feature debe venir acompañada de tests.
-
-#### 5.2.4. Especificaciones Binarias No Toleran Aproximaciones
-
-La implementación MIDI requirió comprensión exacta de:
-- Big-endian byte order
-- Codificación VLQ (Variable-Length Quantity)
-- Formato de eventos MIDI (status bytes, data bytes)
-- Cálculo de delta times
-- Estructura de chunks (MThd, MTrk)
-
-**Lección**: Al implementar formatos binarios estándar, estudiar la especificación oficial es indispensable. Los tutoriales pueden omitir detalles críticos.
-
-#### 5.2.5. La Separación Compiler-Runtime Es Poderosa
-
-Siguiendo el principio de `runtime`, el compilador genera archivos MIDI autocontenidos reproducibles en **cualquier sistema** sin instalar librerías de audio. Esta decisión arquitectónica proporcionó:
-- Portabilidad total (Windows, macOS, Linux)
-- Testing simplificado (verificar bytes del archivo MIDI)
-- Integración con DAWs profesionales (Ableton, Logic, FL Studio)
-
-**Lección**: Evaluar cuidadosamente el trade-off entre control total (generar audio directamente) y portabilidad (delegar a runtime estándar). Para muchos dominios, la portabilidad es más valiosa.
+- **Orden en el lexer**: El orden de las reglas en Flex es determinante; los patrones específicos (comentarios, keywords, `x`, `.`, notas) deben ir antes que el identificador genérico para evitar clasificaciones erróneas.
+- **Memoria en C**: Aun con destructores cuidadosos, es fácil introducir fugas o *use-after-free*; usar sanitizers desde el inicio simplifica enormemente el debugging.
+- **Testing continuo**: Los bugs más sutiles (melodías invertidas, timing incorrecto, leaks en imports) aparecieron solo gracias a una combinación de tests de aceptación/rechazo, escuchar el MIDI y ejecutar AddressSanitizer.
+- **Especificaciones binarias**: Implementar MIDI obligó a respetar al detalle TPQN, VLQ y estructura de chunks; no basta con aproximaciones o tutoriales incompletos.
+- **Separación compiler/runtime**: Generar solo MIDI y delegar la síntesis al entorno del usuario dio como resultado un compilador más portable, fácil de probar y sencillo de integrar con distintas herramientas.
 
 ### 5.3. Reflexión Final
 
@@ -2310,58 +1212,26 @@ El resultado es un compilador robusto y extensible que cumple su objetivo: **dem
 
 ## 6. Referencias
 
-Aho, A. V., Lam, M. S., Sethi, R., & Ullman, J. D. (2006). *Compilers: Principles, Techniques, and Tools* (2nd ed.). Addison-Wesley. (Referencia fundamental sobre construcción de compiladores, tabla de símbolos, y análisis semántico)
+Aho, A. V., Lam, M. S., Sethi, R., & Ullman, J. D. (2006). *Compilers: Principles, Techniques, and Tools* (2nd ed.). Addison-Wesley.
 
-Chomsky, N. (1956). Three models for the description of language. *IRE Transactions on Information Theory*, 2(3), 113-124. (Clasificación de gramáticas formales - jerarquía de Chomsky)
+Levine, J. (2009). *flex & bison: Text Processing Tools*. O'Reilly Media.
 
-Levine, J. (2009). *flex & bison: Text Processing Tools*. O'Reilly Media. (Guía práctica sobre Flex y Bison, incluyendo modo PUSH)
+Paxson, V., & Estes, W. (2020). *Flex - The Fast Lexical Analyzer* (Version 2.6.4). Free Software Foundation.
 
-MIDI Manufacturers Association. (1996). *The Complete MIDI 1.0 Detailed Specification* (Document Version 96.1). Recuperado de https://www.midi.org/specifications (Especificación oficial del protocolo MIDI)
+Donnelly, C., & Stallman, R. (2020). *Bison - The GNU Parser Generator* (Version 3.8.2). Free Software Foundation.
 
-Music Technology Group, McGill University. *Standard MIDI File Format*. Recuperado de https://www.music.mcgill.ca/~ich/classes/mumt306/StandardMIDIfileformat.html (Documentación técnica del formato SMF)
+MIDI Manufacturers Association. (1996). *The Complete MIDI 1.0 Detailed Specification* (Document Version 96.1). MIDI Manufacturers Association.
 
-Paxson, V., & Estes, W. (2020). *Flex - The Fast Lexical Analyzer* (Version 2.6.4). Free Software Foundation. (Documentación oficial de Flex, incluyendo características v2.0.0)
-
-Donnelly, C., & Stallman, R. (2020). *Bison - The GNU Parser Generator* (Version 3.8.2). Free Software Foundation. (Documentación oficial de GNU Bison)
-
-Seward, J., & Nethercote, N. (2007). Using Valgrind to detect undefined value errors with bit-precision. *USENIX Annual Technical Conference*. (Herramienta de detección de errores de memoria)
-
-The Clang Team. (2021). *AddressSanitizer*. LLVM Project. Recuperado de https://clang.llvm.org/docs/AddressSanitizer.html (Documentación de AddressSanitizer para detección de memory leaks)
+Music Technology Group, McGill University. *Standard MIDI File Format*. McGill University.
 
 ---
 
 ## 7. Bibliografía
 
-Appel, A. W. (1998). *Modern Compiler Implementation in C*. Cambridge University Press. (Alternativa a Aho et al., con enfoque en implementación práctica)
+Hopcroft, J. E., Motwani, R., & Ullman, J. D. (2006). *Introduction to Automata Theory, Languages, and Computation* (3rd ed.). Pearson.
 
-Cooper, K. D., & Torczon, L. (2011). *Engineering a Compiler* (2nd ed.). Morgan Kaufmann. (Perspectiva moderna sobre construcción de compiladores)
+Sipser, M. (2012). *Introduction to the Theory of Computation* (3rd ed.). Cengage Learning.
 
-Wirth, N. (1996). *Compiler Construction*. Addison-Wesley. (Enfoque minimalista y educativo, base del lenguaje Oberon)
-
-Grune, D., Van Reeuwijk, K., Bal, H. E., Jacobs, C. J., & Langendoen, K. (2012). *Modern Compiler Design* (2nd ed.). Springer. (Cobertura amplia de técnicas modernas de compilación)
-
-Fischer, C. N., Cytron, R. K., & LeBlanc, R. J. (2009). *Crafting a Compiler*. Addison-Wesley. (Enfoque práctico con énfasis en implementación)
-
-Mogensen, T. Æ. (2017). *Introduction to Compiler Design* (2nd ed.). Springer. (Introducción accesible con ejemplos en pseudocódigo)
-
-Parr, T. (2009). *Language Implementation Patterns: Create Your Own Domain-Specific and General Programming Languages*. Pragmatic Bookshelf. (Enfoque en DSLs y patrones de implementación)
-
-Hopcroft, J. E., Motwani, R., & Ullman, J. D. (2006). *Introduction to Automata Theory, Languages, and Computation* (3rd ed.). Pearson. (Fundamentación teórica de lenguajes formales)
-
-Sipser, M. (2012). *Introduction to the Theory of Computation* (3rd ed.). Cengage Learning. (Teoría de computación, autómatas, y jerarquía de Chomsky)
-
-Pierce, B. C. (2002). *Types and Programming Languages*. MIT Press. (Fundamentos de sistemas de tipos)
-
-Muchnick, S. S. (1997). *Advanced Compiler Design and Implementation*. Morgan Kaufmann. (Técnicas avanzadas de optimización)
-
-Sewell, P. (2013). *Lecture Notes on Compiler Construction*. University of Cambridge. (Material educativo sobre construcción de compiladores)
-
-Roads, C. (1996). *The Computer Music Tutorial*. MIT Press. (Fundamentos de síntesis digital y formatos de audio)
-
-Loy, G. (2006). *Musimathics: The Mathematical Foundations of Music* (Vols. 1-2). MIT Press. (Matemáticas aplicadas a música y audio digital)
-
-Valimaki, V., & Reiss, J. D. (2016). *All About Audio Equalization: Solutions and Frontiers*. Applied Sciences. (Procesamiento digital de señales de audio)
-
-Docker, Inc. (2024). *Docker Documentation*. Recuperado de https://docs.docker.com/ (Containerización y reproducibilidad de entornos)
+Cooper, K. D., & Torczon, L. (2011). *Engineering a Compiler* (2nd ed.). Morgan Kaufmann.
 
 ---
