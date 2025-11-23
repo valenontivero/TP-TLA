@@ -8,5 +8,9 @@ RUN apt-get update --yes \
 		cmake \
 		flex \
 		gcc \
+		libsndfile1-dev \
+		libmp3lame-dev \
+		fluidsynth \
+		fluid-soundfont-gm \
 		make \
 	&& rm --force --recursive /var/lib/apt/lists/*

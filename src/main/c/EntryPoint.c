@@ -1,3 +1,4 @@
+#include "backend/code-generation/AudioConverter.h"
 #include "backend/code-generation/Generator.h"
 #include "backend/code-generation/MidiGenerator.h"
 #include "backend/domain-specific/Calculator.h"
@@ -38,6 +39,7 @@ const int main(const int length, const char ** arguments) {
 		initializeTypeCheckerModule(),
 		initializeSemanticAnalyzerModule(),
 		initializeMidiGeneratorModule(),
+		initializeAudioConverterModule(),
 		initializeCalculatorModule(),
 		initializeGeneratorModule()
 	};

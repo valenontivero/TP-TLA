@@ -1,5 +1,6 @@
 #include "Generator.h"
 #include "MidiGenerator.h"
+#include "AudioConverter.h"
 
 /* MODULE INTERNAL STATE */
 
@@ -158,6 +159,33 @@ void executeGenerator(CompilerState * compilerState) {
 		CompilationStatus status = generateMidiFile(program, "output.mid");
 		if (status == SUCCEEDED) {
 			printf("\n✓ MIDI file generated: output.mid\n");
+
+			// Convert MIDI to audio formats
+			printf("\nConverting MIDI to audio formats...\n");
+
+			// Convert to WAV
+			status = convertMidiToWav("output.mid", "output.wav");
+			if (status == SUCCEEDED) {
+				printf("✓ WAV file generated: output.wav\n");
+			} else {
+				printf("✗ WAV conversion failed\n");
+			}
+
+			// Convert to FLAC
+			status = convertMidiToFlac("output.mid", "output.flac");
+			if (status == SUCCEEDED) {
+				printf("✓ FLAC file generated: output.flac\n");
+			} else {
+				printf("✗ FLAC conversion failed\n");
+			}
+
+			// Convert to MP3
+			status = convertMidiToMp3("output.mid", "output.mp3");
+			if (status == SUCCEEDED) {
+				printf("✓ MP3 file generated: output.mp3\n");
+			} else {
+				printf("✗ MP3 conversion failed\n");
+			}
 		} else {
 			printf("\n✗ MIDI generation failed\n");
 		}
