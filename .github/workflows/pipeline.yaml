@@ -16,6 +16,10 @@ jobs:
             cmake \
             flex \
             gcc \
+            libsndfile1-dev \
+            libmp3lame-dev \
+            fluidsynth \
+            fluid-soundfont-gm \
             make
           chmod u+x --recursive src/main/bash
       - name: "Build."
