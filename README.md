@@ -1,9 +1,7 @@
 # Drum Machine DSL Compiler
 
-[![Release](https://img.shields.io/badge/Release-v2.0.0-ffb600.svg?style=for-the-badge)](https://github.com/agustin-golmar/Flex-Bison-Compiler/releases)
-[![Pipeline](https://github.com/agustin-golmar/Flex-Bison-Compiler/actions/workflows/pipeline.yaml/badge.svg?branch=production)](https://github.com/agustin-golmar/Flex-Bison-Compiler/actions/workflows/pipeline.yaml)
-
-A complete compiler for 'DrumLang', a domain-specific language (DSL) designed to create rhythm patterns for drum machines. Built with Flex (lexical analysis) and Bison (syntactic analysis).
+[![Release](https://img.shields.io/badge/Release-v2.0.0-ffb600.svg?style=for-the-badge)](https://github.com/valenontivero/TP-TLA/releases)
+[![CI](https://github.com/valenontivero/TP-TLA/actions/workflows/pipeline.yaml/badge.svg)](https://github.com/valenontivero/TP-TLA/actions/workflows/pipeline.yaml)
 
 ---
 
