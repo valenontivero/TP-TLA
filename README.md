@@ -19,8 +19,9 @@ docker compose run --rm compiler bash -c "src/main/bash/build.sh"
 
 ```bash
 docker compose run --rm -e LOGGING_LEVEL=INFORMATION compiler bash -c \
-  "src/main/bash/run.sh <program.dsl>"
+  "src/main/bash/run.sh <program.dsl> -fo=wav,flac,mp3"
 ```
+the option -fo is optional. If not provided, the program will only generate the MIDI file. If provided, the program will generate the MIDI file and the audio file in either WAV, FLAC or MP3 format.
 
 ### How To Write a Program
 
@@ -54,7 +55,7 @@ docker compose run --rm compiler
 src/main/bash/build.sh
 
 # Run program
-src/main/bash/run.sh <program.dsl>
+src/main/bash/run.sh <program.dsl> [-fo=wav,flac,mp3]
 
 # Exit and cleanup
 exit

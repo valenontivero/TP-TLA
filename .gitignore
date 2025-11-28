@@ -12,6 +12,7 @@
 /node_modules/
 /obj/
 .idea/
+out/
 
 # Files.
 .DS_Store

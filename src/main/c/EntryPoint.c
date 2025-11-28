@@ -13,6 +13,7 @@
 #include "support/type/CompilationStatus.h"
 #include "support/type/CompilerState.h"
 #include "support/type/ModuleDestructor.h"
+#include <string.h>
 
 /**
  * The main entry-point of the entire application. If you use "strtok" to
@@ -27,8 +28,54 @@ const int main(const int length, const char ** arguments) {
 	}
 	CompilerState compilerState = {
 		.abstractSyntaxtTree = NULL,
-		.value = 0
+		.value = 0,
+		.outputWav = false,
+		.outputFlac = false,
+		.outputMp3 = false
 	};
+
+	/* Parse line command argument -fo=... for output format */
+	for (int k = 0; k < length; ++k) {
+		const char * argument = arguments[k];
+		if (strncmp(argument, "-fo=", 4) == 0) {
+			const char * formats = argument + 4;
+			logDebugging(logger, "Output formats option detected: \"%s\"", formats);
+
+			compilerState.outputWav = false;
+			compilerState.outputFlac = false;
+			compilerState.outputMp3 = false;
+
+			const char * start = formats;
+			while (*start != '\0') {
+				const char * end = start;
+				while (*end != '\0' && *end != ',') {
+					++end;
+				}
+
+				size_t lengthToken = (size_t)(end - start);
+				if (lengthToken > 0) {
+					if (lengthToken == 3 && strncmp(start, "wav", 3) == 0) {
+						compilerState.outputWav = true;
+					}
+					else if (lengthToken == 3 && strncmp(start, "mp3", 3) == 0) {
+						compilerState.outputMp3 = true;
+					}
+					else if (lengthToken == 4 && strncmp(start, "flac", 4) == 0) {
+						compilerState.outputFlac = true;
+					}
+					else {
+						logWarning(logger, "Unknown output format in -fo option: \"%.*s\"", (int)lengthToken, start);
+					}
+				}
+
+				if (*end == ',') {
+					start = end + 1;
+				} else {
+					break;
+				}
+			}
+		}
+	}
 	ModuleDestructor moduleDestructors[] = {
 		initializeAbstractSyntaxTreeModule(),
 		initializeFlexActionsModule(lexicalAnalyzer),

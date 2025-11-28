@@ -1,6 +1,8 @@
 #ifndef COMPILER_STATE_HEADER
 #define COMPILER_STATE_HEADER
 
+#include <stdbool.h>
+
 /**
  * The global state of the compiler. Should transport every data structure
  * needed across the different phases of a compilation.
@@ -17,6 +19,14 @@ typedef struct {
 	 * will be your fault.
 	 */
 	signed int value;
+
+	/**
+	 * Output format selection for backend audio generation.
+	 * All flags are false by default and can be enabled via CLI flags.
+	 */
+	bool outputWav;
+	bool outputFlac;
+	bool outputMp3;
 
 	// TODO: Add a symbol table.
 	// TODO: Add an stack to handle nested scopes.
