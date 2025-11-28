@@ -156,33 +156,33 @@ void executeGenerator(CompilerState * compilerState) {
 	// Generate MIDI file (only if we have declarations and instruments)
 	Program * program = compilerState->abstractSyntaxtTree;
 	if (program != NULL && program->declarations != NULL && program->instruments != NULL) {
-		CompilationStatus status = generateMidiFile(program, "output.mid");
+		CompilationStatus status = generateMidiFile(program, "out/output.mid");
 		if (status == SUCCEEDED) {
-			printf("\n✓ MIDI file generated: output.mid\n");
+			printf("\n✓ MIDI file generated: out/output.mid\n");
 
 			// Convert MIDI to audio formats
 			printf("\nConverting MIDI to audio formats...\n");
 
 			// Convert to WAV
-			status = convertMidiToWav("output.mid", "output.wav");
+			status = convertMidiToWav("out/output.mid", "out/output.wav");
 			if (status == SUCCEEDED) {
-				printf("✓ WAV file generated: output.wav\n");
+				printf("✓ WAV file generated: out/output.wav\n");
 			} else {
 				printf("✗ WAV conversion failed\n");
 			}
 
 			// Convert to FLAC
-			status = convertMidiToFlac("output.mid", "output.flac");
+			status = convertMidiToFlac("out/output.mid", "out/output.flac");
 			if (status == SUCCEEDED) {
-				printf("✓ FLAC file generated: output.flac\n");
+				printf("✓ FLAC file generated: out/output.flac\n");
 			} else {
 				printf("✗ FLAC conversion failed\n");
 			}
 
 			// Convert to MP3
-			status = convertMidiToMp3("output.mid", "output.mp3");
+			status = convertMidiToMp3("out/output.mid", "out/output.mp3");
 			if (status == SUCCEEDED) {
-				printf("✓ MP3 file generated: output.mp3\n");
+				printf("✓ MP3 file generated: out/output.mp3\n");
 			} else {
 				printf("✗ MP3 conversion failed\n");
 			}

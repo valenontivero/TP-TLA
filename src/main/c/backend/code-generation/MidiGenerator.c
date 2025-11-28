@@ -3,6 +3,9 @@
 #include "../semantic-analysis/SemanticAnalyzer.h"
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 static Logger * _logger = NULL;
 static FILE * _midiFile = NULL;
@@ -23,9 +26,9 @@ ModuleDestructor initializeMidiGeneratorModule() {
 	return _shutdownMidiGeneratorModule;
 }
 
-/* ============================================================================
- * MIDI BINARY OUTPUT FUNCTIONS
- * ============================================================================ */
+/**
+* MIDI BINARY OUTPUT FUNCTIONS
+*/
 
 /**
  * Write a single byte to the MIDI file.
@@ -490,6 +493,14 @@ CompilationStatus generateMidiFile(Program * program, const char * outputFilenam
 	}
 
 	logInformation(_logger, "Generating MIDI file: %s", outputFilename);
+
+	// Ensure output directory exists when writing to "out/...".
+	if (strncmp(outputFilename, "out/", 4) == 0) {
+		if (mkdir("out", 0755) != 0 && errno != EEXIST) {
+			logError(_logger, "Failed to create output directory 'out': %s", strerror(errno));
+			return FAILED;
+		}
+	}
 
 	// Open output file
 	_midiFile = fopen(outputFilename, "wb");
