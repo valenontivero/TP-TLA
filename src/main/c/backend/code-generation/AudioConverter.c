@@ -22,12 +22,8 @@ ModuleDestructor initializeAudioConverterModule() {
 	return _shutdownAudioConverterModule;
 }
 
-/* ============================================================================
- * FLUIDSYNTH MIDI TO PCM CONVERSION (using command-line tool)
- * ============================================================================ */
-
 /**
- * Convert MIDI file to WAV using fluidsynth command-line tool.
+ * MIDI to WAV using fluidsynth command-line tool.
  * Then read the WAV file and return PCM samples.
  */
 static int16_t * _midiToPcm(const char * midiFilename, int * sampleCount, int * sampleRate) {

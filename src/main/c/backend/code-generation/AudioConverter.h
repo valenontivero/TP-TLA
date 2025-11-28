@@ -15,34 +15,12 @@
  * - LAME: MP3 encoding
  */
 
-/** Initialize module's internal state. */
 ModuleDestructor initializeAudioConverterModule();
 
-/**
- * Convert a MIDI file to WAV format.
- *
- * @param midiFilename Input MIDI file path
- * @param wavFilename Output WAV file path
- * @return SUCCEEDED if conversion successful, FAILED otherwise
- */
 CompilationStatus convertMidiToWav(const char * midiFilename, const char * wavFilename);
 
-/**
- * Convert a MIDI file to FLAC format.
- *
- * @param midiFilename Input MIDI file path
- * @param flacFilename Output FLAC file path
- * @return SUCCEEDED if conversion successful, FAILED otherwise
- */
 CompilationStatus convertMidiToFlac(const char * midiFilename, const char * flacFilename);
 
-/**
- * Convert a MIDI file to MP3 format.
- *
- * @param midiFilename Input MIDI file path
- * @param mp3Filename Output MP3 file path
- * @return SUCCEEDED if conversion successful, FAILED otherwise
- */
 CompilationStatus convertMidiToMp3(const char * midiFilename, const char * mp3Filename);
 
 /**
