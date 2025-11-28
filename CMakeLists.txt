@@ -40,6 +40,7 @@ if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
 		src/main/c/backend/semantic-analysis/SemanticAnalyzer.c
 		src/main/c/backend/semantic-analysis/SymbolTable.c
 		src/main/c/backend/semantic-analysis/TypeChecker.c
+		src/main/c/backend/output-conversion/OutputConversion.c
 		src/main/c/EntryPoint.c
 		src/main/c/frontend/Frontend.c
 		src/main/c/frontend/ImportResolver.c

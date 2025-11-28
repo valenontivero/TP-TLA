@@ -157,48 +157,9 @@ void executeGenerator(CompilerState * compilerState) {
 	Program * program = compilerState->abstractSyntaxtTree;
 
 	if (program != NULL && program->declarations != NULL && program->instruments != NULL) {
-		bool wantsWav  = compilerState->outputWav;
-		bool wantsFlac = compilerState->outputFlac;
-		bool wantsMp3  = compilerState->outputMp3;
-
-		if (!wantsWav && !wantsFlac && !wantsMp3) {
-			logDebugging(_logger, "No audio formats requested (-fo not provided); skipping audio generation.");
-			return;
-		}
-
 		CompilationStatus status = generateMidiFile(program, "out/output.mid");
 		if (status == SUCCEEDED) {
 			printf("\n✓ MIDI file generated: out/output.mid\n");
-
-			// Convert MIDI to audio formats
-			printf("\nConverting MIDI to audio formats...\n");
-
-			if (wantsWav) {
-				status = convertMidiToWav("out/output.mid", "out/output.wav");
-				if (status == SUCCEEDED) {
-					printf("✓ WAV file generated: out/output.wav\n");
-				} else {
-					printf("✗ WAV conversion failed\n");
-				}
-			}
-
-			if (wantsFlac) {
-				status = convertMidiToFlac("out/output.mid", "out/output.flac");
-				if (status == SUCCEEDED) {
-					printf("✓ FLAC file generated: out/output.flac\n");
-				} else {
-					printf("✗ FLAC conversion failed\n");
-				}
-			}
-
-			if (wantsMp3) {
-				status = convertMidiToMp3("out/output.mid", "out/output.mp3");
-				if (status == SUCCEEDED) {
-					printf("✓ MP3 file generated: out/output.mp3\n");
-				} else {
-					printf("✗ MP3 conversion failed\n");
-				}
-			}
 		} else {
 			printf("\n✗ MIDI generation failed\n");
 		}

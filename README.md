@@ -18,10 +18,12 @@ docker compose run --rm compiler bash -c "src/main/bash/build.sh"
 ### Compile a Program
 
 ```bash
-docker compose run --rm -e LOGGING_LEVEL=INFORMATION compiler bash -c \
-  "src/main/bash/run.sh <program.dsl> -fo=wav,flac,mp3"
+docker compose run --rm \
+  -e LOGGING_LEVEL=INFORMATION \
+  -e OUTPUT_CONVERSION_ENABLED=true \ # optional, default is false
+  compiler bash -c "src/main/bash/run.sh lib/<program.dsl> -fo=wav,flac,mp3"
 ```
-the option -fo is optional. If not provided, the program will only generate the MIDI file. If provided, the program will generate the MIDI file and the audio file in either WAV, FLAC or MP3 format.
+the option -fo is optional. If not provided, the program will only generate the MIDI file. If provided, as well as setting the environment variable OUTPUT_CONVERSION_ENABLED=true, the program will generate the MIDI file and the audio file in either WAV, FLAC or MP3 format.
 
 ### How To Write a Program
 
@@ -53,6 +55,10 @@ docker compose run --rm compiler
 
 # Build inside container
 src/main/bash/build.sh
+
+# Optional: Set output conversion environment variable
+# Enable audio file generation (wav, flac, mp3); default is false if not set
+export OUTPUT_CONVERSION_ENABLED=true
 
 # Run program
 src/main/bash/run.sh <program.dsl> [-fo=wav,flac,mp3]

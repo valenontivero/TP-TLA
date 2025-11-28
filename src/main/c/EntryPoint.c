@@ -9,6 +9,7 @@
 #include "frontend/ImportResolver.h"
 #include "frontend/lexical-analysis/FlexActions.h"
 #include "frontend/syntactic-analysis/BisonActions.h"
+#include "backend/output-conversion/OutputConversion.h"
 #include "support/logging/Logger.h"
 #include "support/type/CompilationStatus.h"
 #include "support/type/CompilerState.h"
@@ -88,7 +89,8 @@ const int main(const int length, const char ** arguments) {
 		initializeMidiGeneratorModule(),
 		initializeAudioConverterModule(),
 		initializeCalculatorModule(),
-		initializeGeneratorModule()
+		initializeGeneratorModule(),
+		initializeOutputConversionModule()
 	};
 	CompilationStatus compilationStatus = executeSyntacticAnalysis();
 	Program * program = compilerState.abstractSyntaxtTree;
@@ -107,8 +109,10 @@ const int main(const int length, const char ** arguments) {
 			if (compilationStatus == SUCCEEDED) {
 				// --------------------------------------------------------------------------------
 				// Beginning of the Backend... ----------------------------------------------------
-				logDebugging(logger, "Generating output...");
+				logDebugging(logger, "Generating output (code generation)...");
 				executeGenerator(&compilerState);
+				logDebugging(logger, "Code generation completed. Starting output conversion (if enabled)...");
+				executeOutputConversion(&compilerState);
 				// ...end of the Backend. ---------------------------------------------------------
 				// --------------------------------------------------------------------------------
 			}
